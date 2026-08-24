@@ -6,7 +6,7 @@
     "rules_count": 18
   },
   "harness": {
-    "version": "0.2.1",
+    "version": "0.2.2",
     "hooks": [
       "check_deferred_actions.py",
       "post_write_anglicism_check.py",
@@ -52,5 +52,5 @@
     "журнал прецедентов правил",
     "операционные правила клиента (overlay)"
   ],
-  "built_at_version": "0.2.1"
+  "built_at_version": "0.2.2"
 }
