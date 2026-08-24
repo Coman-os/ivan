@@ -1,0 +1,56 @@
+{
+  "figure": {
+    "stage": "v3",
+    "rules_source": "clean-src/v3-ivan/root-CLAUDE.md",
+    "rules_sha": "2e7a184dc95d",
+    "rules_count": 18
+  },
+  "harness": {
+    "version": "0.2.1",
+    "hooks": [
+      "check_deferred_actions.py",
+      "post_write_anglicism_check.py",
+      "post_write_client_folder_placement_check.py",
+      "post_write_doc_standard_check.py",
+      "post_write_md_check.py",
+      "post_write_memory_gate.py",
+      "post_write_principles_map_sync.py",
+      "post_write_readme_sync.py",
+      "post_write_skill_map_check.py",
+      "post_write_ssot_overlap_warn.py",
+      "session_end_autocommit.py",
+      "session_start_load_rules.py"
+    ],
+    "skills": [
+      "close-session",
+      "deep-research",
+      "dialectic-partner",
+      "ivan-rules",
+      "kh-check"
+    ],
+    "knowledge": [
+      "agent-design-principles.md",
+      "context-distribution-rules.md",
+      "document-lifecycle.md",
+      "document-writing-standards.md",
+      "git-commits.md",
+      "knowledge-hub-design-principles.md",
+      "language-preferences.md",
+      "operating-principles.md",
+      "principles-architecture.md",
+      "skill-capabilities-map.md"
+    ]
+  },
+  "platform": {
+    "target": "claude-code/cowork",
+    "hooks_executable": true,
+    "rules_delivery": "SessionStart hook + skill ivan-rules"
+  },
+  "not_included": [
+    "spec-review (расширенная поставка)",
+    "improvement-review (расширенная поставка)",
+    "журнал прецедентов правил",
+    "операционные правила клиента (overlay)"
+  ],
+  "built_at_version": "0.2.1"
+}
