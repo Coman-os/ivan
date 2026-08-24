@@ -6,18 +6,11 @@
     "rules_count": 18
   },
   "harness": {
-    "version": "0.2.4",
+    "version": "0.2.5",
     "hooks": [
       "check_deferred_actions.py",
-      "post_write_anglicism_check.py",
-      "post_write_client_folder_placement_check.py",
-      "post_write_doc_standard_check.py",
       "post_write_md_check.py",
       "post_write_memory_gate.py",
-      "post_write_principles_map_sync.py",
-      "post_write_readme_sync.py",
-      "post_write_skill_map_check.py",
-      "post_write_ssot_overlap_warn.py",
       "session_end_autocommit.py",
       "session_start_load_rules.py"
     ],
@@ -53,5 +46,5 @@
     "журнал прецедентов правил",
     "операционные правила клиента (overlay)"
   ],
-  "built_at_version": "0.2.4"
+  "built_at_version": "0.2.5"
 }
