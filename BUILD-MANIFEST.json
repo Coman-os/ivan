@@ -6,7 +6,7 @@
     "rules_count": 18
   },
   "harness": {
-    "version": "0.2.8",
+    "version": "0.2.9",
     "hooks": [
       "check_deferred_actions.py",
       "post_write_md_check.py",
@@ -30,9 +30,7 @@
       "git-commits.md",
       "knowledge-hub-design-principles.md",
       "language-preferences.md",
-      "operating-principles.md",
-      "principles-architecture.md",
-      "skill-capabilities-map.md"
+      "operating-principles.md"
     ]
   },
   "platform": {
@@ -46,5 +44,5 @@
     "журнал прецедентов правил",
     "операционные правила клиента (overlay)"
   ],
-  "built_at_version": "0.2.8"
+  "built_at_version": "0.2.9"
 }

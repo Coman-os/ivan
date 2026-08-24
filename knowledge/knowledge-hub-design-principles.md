@@ -4,7 +4,7 @@
 |----------|----------|
 | Версия | 1.1 |
 | Слой | Layer 2 (SCL) |
-| principle_layer | 0 (размещение и структура файлов) — см. [principles-architecture.md](knowledge/principles-architecture.md) |
+| principle_layer | 0 (размещение и структура файлов) — см. principles-architecture.md |
 | Статус | ✅ Active |
 | Owner | Максим Опилкин |
 | Назначение | Философский фундамент Knowledge Hub: SSOT, Channel-First, Knowledge Core vs Operations, автономность H2-секций. Объясняет ПОЧЕМУ система устроена так. Используется как основание для context-distribution-rules.md и cleanup-crew. |

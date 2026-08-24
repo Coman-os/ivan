@@ -73,7 +73,7 @@ Overlay **дополняет** этот корень (аддитивно), не 
 - [git-commits.md](knowledge/git-commits.md) — Git-коммиты (conventional commits, scopes)
 
 **Карта skills:**
-- [skill-capabilities-map.md](knowledge/skill-capabilities-map.md) — карта capabilities: Decision Tree «какой skill», цепочки, ритм, антипаттерны
+- skill-capabilities-map.md — карта capabilities: Decision Tree «какой skill», цепочки, ритм, антипаттерны
 
 ---
 
@@ -89,9 +89,9 @@ Overlay **дополняет** этот корень (аддитивно), не 
 
 4. **[Слой 2 §A] Принципы при создании агента.** Перед написанием нового продуктового AI-агента или значимым изменением — `Read` [agent-design-principles.md](knowledge/agent-design-principles.md), применяй §A (принципы + чек-лист). Полный текст доменных правил.
 
-5. **[Слой 2 §B] Проверка при создании skill.** Перед созданием Claude Code skill — `Read` [skill-capabilities-map.md](knowledge/skill-capabilities-map.md) + [agent-design-principles.md §B](knowledge/agent-design-principles.md) (перекрытие / цепочка / ритм / чек-лист). **После создания/удаления/переименования skill** — ОБЯЗАТЕЛЬНО обновить capabilities-map (счётчик, Decision Tree, цепочки, антипаттерны, «Обновлён»). Полный текст.
+5. **[Слой 2 §B] Проверка при создании skill.** Перед созданием Claude Code skill — `Read` skill-capabilities-map.md + [agent-design-principles.md §B](knowledge/agent-design-principles.md) (перекрытие / цепочка / ритм / чек-лист). **После создания/удаления/переименования skill** — ОБЯЗАТЕЛЬНО обновить capabilities-map (счётчик, Decision Tree, цепочки, антипаттерны, «Обновлён»). Полный текст.
 
-6. **Проактивные подсказки skills.** После завершения любого skill — сверься с [skill-capabilities-map.md](knowledge/skill-capabilities-map.md): §3 (цепочки) определяет следующий шаг, §2 (ритм) — периодические напоминания, §5 (антипаттерны) — чего не предлагать. Предложи пользователю следующий шаг из цепочки одной фразой.
+6. **Проактивные подсказки skills.** После завершения любого skill — сверься с skill-capabilities-map.md: §3 (цепочки) определяет следующий шаг, §2 (ритм) — периодические напоминания, §5 (антипаттерны) — чего не предлагать. Предложи пользователю следующий шаг из цепочки одной фразой.
 
 7. **Разбор ошибок — формат обязателен.** При вопросе «почему так произошло» — ответ строго по шаблону:
    - **Где сбой:** конкретный шаг, инструмент, файл
@@ -191,7 +191,7 @@ Overlay **дополняет** этот корень (аддитивно), не 
 ### Единый блок оформления (правила H4)
 
 Способность Ивана «оформляю документы единообразно» — **одна несущая**: правило-текст
-(ниже) + его проверка ([kh-check](knowledge/skill-capabilities-map.md)) +
+(ниже) + его проверка (kh-check) +
 форсящие хуки (`post_write_doc_standard_check`, `post_write_md_check`,
 `post_write_anglicism_check`). Три опоры одной способности, не рассинхронизированы.
 
@@ -208,7 +208,7 @@ Overlay **дополняет** этот корень (аддитивно), не 
 (агенты, skills, стандарты документов)
 
 - **[Слой 2 §A]** Проектирование агента — `Read` [agent-design-principles.md](knowledge/agent-design-principles.md) §A перед новым продуктовым агентом.
-- **[Слой 2 §B]** Создание skill — проверка по [skill-capabilities-map.md](knowledge/skill-capabilities-map.md) (перекрытие / цепочка / ритм); обновление карты после.
+- **[Слой 2 §B]** Создание skill — проверка по skill-capabilities-map.md (перекрытие / цепочка / ритм); обновление карты после.
 - **[Слой 4] Стандарт оформления документов** — см. единый блок оформления выше (правило «стандарт оформления документов»). Hook `post_write_doc_standard_check.py`.
 
 ---
