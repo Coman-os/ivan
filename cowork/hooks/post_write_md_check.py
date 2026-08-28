@@ -5,8 +5,8 @@ PostToolUse hook: после записи .md файла проверяет:
 2. Наличие поля «Назначение» — карточка файла для агентов (см. requirements.md §2.0)
 
 Метаданные отсутствуют → block (как было).
-Метаданные есть, «Назначение» отсутствует → warn (мягкое напоминание во время backfill «Назначение»).
-После завершения backfill «Назначение» переключить «Назначение» в block.
+Метаданные есть, «Назначение» отсутствует → block: без карточки файла
+документ находится только полным перебором.
 
 Skips README/CHANGELOG, node_modules/.git/.claude/__pycache__.
 """
@@ -164,10 +164,8 @@ def main():
     has_naznachenie = bool(NAZNACHENIE_PATTERN.search(head))
 
     if not has_naznachenie:
-        # Warn (не блокируем) пока идёт backfill «Назначение».
-        # После завершения backfill — заменить на decision="block".
         print(json.dumps({
-            "decision": "warn",
+            "decision": "block",
             "reason": (
                 f"[post_write_md_check] {basename}: нет поля «Назначение» в таблице метаданных.\n"
                 f"Fix: добавить строку в таблицу метаданных:\n"
@@ -176,7 +174,8 @@ def main():
                 f"Это карточка файла для агентов (kh-check Проверка A). "
                 f"SSOT: requirements.md §2.0."
             ),
-        }), file=sys.stderr)
+        }))
+        return
 
 
 if __name__ == "__main__":
