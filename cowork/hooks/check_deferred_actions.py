@@ -9,6 +9,10 @@ import json
 import re
 import sys
 
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _transcript_io import load_messages  # noqa: E402
+
 
 DEFERRED_PATTERNS = [
     # Russian patterns
@@ -52,7 +56,7 @@ COMPILED = [re.compile(p, re.IGNORECASE) for p in DEFERRED_PATTERNS]
 
 def main():
     hook_input = json.loads(sys.stdin.read())
-    transcript = hook_input.get("transcript", [])
+    transcript = load_messages(hook_input)
 
     if not transcript:
         print(json.dumps({"decision": "allow"}))
