@@ -6,7 +6,7 @@
     "rules_count": 18
   },
   "harness": {
-    "version": "0.8.0",
+    "version": "0.9.0",
     "hooks": [
       "check_deferred_actions.py",
       "post_write_md_check.py",
@@ -19,6 +19,7 @@
       "deep-research",
       "dialectic-partner",
       "ivan-rules",
+      "ivan-setup",
       "kh-check"
     ],
     "knowledge": [
@@ -43,5 +44,5 @@
     "журнал прецедентов правил",
     "операционные правила клиента (overlay)"
   ],
-  "built_at_version": "0.8.0"
+  "built_at_version": "0.9.0"
 }
