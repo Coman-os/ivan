@@ -1,10 +1,10 @@
 # Иван — установка в ChatGPT Work
 
-**Версия:** 0.8.0
+**Версия:** 1.1.0 · журнал изменений — [CHANGELOG.md](https://github.com/Coman-os/ivan/blob/main/CHANGELOG.md)
 
 ## Что внутри
 - `instructions.txt` — системная инструкция (≤8000 символов) → в поле Instructions custom GPT.
-- **4 навыка** (`skills/`) — устанавливаются вместе с плагином.
+- **5 навыка** (`skills/`) — устанавливаются вместе с плагином.
 - **10 knowledge-файлов** (`knowledge/`) — принципы и стандарты → в раздел Knowledge.
 - `.codex-plugin/plugin.json` — манифест плагина.
 
