@@ -2,11 +2,11 @@
   "figure": {
     "stage": "v3",
     "rules_source": "clean-src/v3-ivan/root-CLAUDE.md",
-    "rules_sha": "df987d781870",
+    "rules_sha": "3266e061a056",
     "rules_count": 18
   },
   "harness": {
-    "version": "1.0.0",
+    "version": "1.1.0",
     "hooks": [
       "check_deferred_actions.py",
       "post_write_md_check.py",
@@ -44,5 +44,5 @@
     "журнал прецедентов правил",
     "операционные правила клиента (overlay)"
   ],
-  "built_at_version": "1.0.0"
+  "built_at_version": "1.1.0"
 }
