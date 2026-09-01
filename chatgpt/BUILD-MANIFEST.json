@@ -7,13 +7,7 @@
   },
   "harness": {
     "version": "1.1.0",
-    "hooks": [
-      "check_deferred_actions.py",
-      "post_write_md_check.py",
-      "post_write_memory_gate.py",
-      "session_end_autocommit.py",
-      "session_start_load_rules.py"
-    ],
+    "hooks": [],
     "skills": [
       "close-session",
       "deep-research",
@@ -34,8 +28,9 @@
     ]
   },
   "platform": {
-    "target": "claude-code/cowork",
+    "target": "codex/gpt-work",
     "hooks_executable": true,
+    "hooks_need_trust": true,
     "rules_delivery": "SessionStart hook + skill ivan-rules"
   },
   "not_included": [
