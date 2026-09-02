@@ -177,7 +177,7 @@ git diff --name-only $(git log --since="2 days ago" --format=%H | tail -1)^..HEA
 
 **Применяется к:** каждой папке, в которой менялись .md файлы.
 
-По context-distribution-rules.md, синхронно с hook'ом `post_write_readme_sync.py`:
+По context-distribution-rules.md, синхронно со сверкой индексов папок:
 
 1. Подсчитать .md на верхнем уровне папки (не рекурсивно), исключая `README.md` и файлы на `_`.
 2. **Skip для хронологических архивов** (`meetings/` и подобные — навигация через `history-log.md`).

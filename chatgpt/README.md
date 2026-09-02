@@ -1,11 +1,11 @@
 # Иван — установка в ChatGPT Work
 
-**Версия:** 1.1.0 · журнал изменений — [CHANGELOG.md](https://github.com/Coman-os/ivan/blob/main/CHANGELOG.md)
+**Версия:** 2.0.0 · журнал изменений — [CHANGELOG.md](https://github.com/Coman-os/ivan/blob/main/CHANGELOG.md)
 
 ## Что внутри
 - `.codex-plugin/plugin.json` — манифест плагина.
 - **6 навыка** (`skills/`) — устанавливаются вместе с плагином.
-- **5 проверок качества** (`hooks/` + `hooks/hooks.json`) — исполняются, см. ниже.
+- **9 проверок качества** (`hooks/` + `hooks/hooks.json`) — исполняются, см. ниже.
 - **Правила Ивана целиком** (`skills/ivan-rules/`) — грузятся при старте каждой
   сессии хуком, а не по требованию.
 - `instructions.txt` — сжатая выжимка правил для **ручной** установки в поле
@@ -34,7 +34,18 @@ codex plugin add coman-ivan-codex@<имя-маркетплейса>
 2. **Instructions:** открой `instructions.txt`, скопируй весь текст в поле «Instructions».
 3. **Knowledge:** загрузи файлы из `knowledge/` в раздел «Knowledge».
 4. **Skills:** если рабочее пространство поддерживает Skills — загрузи папки из `skills/`.
-5. **Проверки качества и правила:** скопируй `hooks/` в `.codex/hooks/` своего проекта.
+5. **Проверки качества и правила** — скопируйте в проект:
+   - папку `hooks/` целиком → `<проект>/.codex/hooks/`
+   - файл `hooks/hooks.json` → `<проект>/.codex/hooks.json` (на уровень выше!)
+
+   Путь `hooks/hooks.json` работает только внутри установленного плагина. Для
+   проектной установки Codex ищет конфиг в `.codex/hooks.json` либо в секции
+   `[hooks]` файла `.codex/config.toml` — вложенный `.codex/hooks/hooks.json`
+   он не найдёт.
+
+   В скопированном `hooks.json` замените `$PLUGIN_ROOT/hooks/` на реальный путь
+   к папке со скриптами, например `.codex/hooks/`: переменную `PLUGIN_ROOT`
+   Codex выставляет только для хуков плагина.
 
 При ручной установке в поле Instructions влезает только выжимка правил. Полный
 свод приходит хуком старта сессии — он же и есть причина ставить `hooks/`.

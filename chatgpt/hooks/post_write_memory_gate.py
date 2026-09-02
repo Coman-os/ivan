@@ -28,6 +28,7 @@ warning'ов «judge недоступен» в telemetry/hook-fires.jsonl.
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 
@@ -114,10 +115,19 @@ def run_placement_judge(content, file_path):
     делит рационализацию писателя — единственное, что реально ловит судейскую ошибку
     размещения (boolean-attestation gate 2 обходится самоподтверждением). Fail-open:
     любая ошибка вызова → пропустить с видимым warning'ом, human-review — backstop."""
+    # Судья — внешний двоичный файл, и он есть не везде: в среде Codex его
+    # нет вовсе. Прежде хук печатал предупреждение «судья недоступен» на
+    # КАЖДОЙ записи в память — шум, ссылающийся на инструмент, которого у
+    # получателя не будет никогда. Проверка наличия делает зависимость явной:
+    # нет судьи — молча работают остальные два гейта, они самодостаточны.
+    judge_bin = os.environ.get("IVAN_PLACEMENT_JUDGE", "claude")
+    if shutil.which(judge_bin) is None:
+        return
+
     prompt = JUDGE_PROMPT.format(content=content[:6000])
     try:
         proc = subprocess.run(
-            ["claude", "-p", prompt, "--output-format", "json"],
+            [judge_bin, "-p", prompt, "--output-format", "json"],
             cwd="/tmp", capture_output=True, text=True, timeout=JUDGE_TIMEOUT_S,
         )
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
@@ -165,7 +175,13 @@ def main():
     file_path = hook_input.get("tool_input", {}).get("file_path", "")
 
     # Only check memory files
-    if "/memory/" not in file_path:
+    # Разделитель пути зависит от системы: на Windows это «\», и проверка
+    # по «/memory/» не срабатывала бы вовсе — гейт молчал бы на всех файлах.
+    # Место хранения настраивается: у получателя источником истины может быть
+    # своя система, а не каталог memory рядом с харнесом.
+    memory_dir = os.environ.get("IVAN_MEMORY_DIR", "memory")
+    parts = file_path.replace("\\", "/").split("/")
+    if memory_dir.replace("\\", "/").strip("/") not in parts:
         return
 
     # Skip MEMORY.md index
@@ -191,11 +207,12 @@ def main():
             f"  - {label} → перенести в: {dest}" for label, dest in violations
         )
         print(
-            f"[memory_gate] Файл {file_path} содержит данные конфигурации, "
-            f"которые должны быть в файлах проекта, а не в memory.\n"
-            f"Нарушения и куда переносить:\n{bullets}\n"
-            f"SSOT: agent-design-principles.md §B Принцип B2 (лестница мест) "
-            f"+ Принцип B4 (директивные validator-сообщения).",
+            f"В файл {file_path} попали настроечные значения — им место "
+            f"в файлах проекта, а не в личной памяти: память не "
+            f"переезжает вместе с проектом и не видна остальным.\n"
+            f"Что перенести и куда:\n{bullets}\n"
+            f"Спросят подробности — это проверка записи в память, "
+            f"файл hooks/post_write_memory_gate.py.",
             file=sys.stderr,
         )
         # exit 2 = blocking error in Claude Code hook semantics (exit 1 is advisory)
@@ -208,16 +225,16 @@ def main():
         # Accept `ladder_checked: true` (with optional surrounding whitespace).
         if not re.search(r"^\s*ladder_checked\s*:\s*true\b", content, re.MULTILINE | re.IGNORECASE):
             print(
-                f"[memory_gate] Новый memory-файл {file_path} не объявляет "
-                f"`ladder_checked: true` в frontmatter.\n"
-                f"Перед записью в memory пройди лестницу B2 (промпт → skill → "
-                f"principles/repo → memory) и убедись, что факт НЕ ложится ни в "
-                f"один repo-файл (concept / principles / CLAUDE.md / reference / "
-                f"`## История изменений` документа) И приватен. Memory — последнее "
-                f"место, не первое (правило «memory — последнее место»).\n"
-                f"Если факт действительно приватный остаток — добавь в frontmatter:\n"
-                f"  ladder_checked: true   # repo-места проверены, факт приватен\n"
-                f"Если нет — положи в repo, не в memory.",
+                f"Запись в личную память {file_path} без пометки, что для "
+                f"факта искали место получше.\n"
+                f"Память — последнее место, не первое: сначала проверь, не "
+                f"ложится ли факт в файлы проекта (принципы, правила, "
+                f"справочники, история изменений документа) — оттуда его "
+                f"увидят все и он переживёт переустановку.\n"
+                f"Место в проекте не нашлось и факт приватен — допиши "
+                f"в шапку файла:\n"
+                f"  ladder_checked: true\n"
+                f"Нашлось — положи туда, а не в память.",
                 file=sys.stderr,
             )
             sys.exit(2)

@@ -5,7 +5,18 @@
         "hooks": [
           {
             "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/hooks/check_closing_handoff.py\"",
+            "commandWindows": "python \"${PLUGIN_ROOT}/hooks/check_closing_handoff.py\"",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
             "command": "python3 \"$PLUGIN_ROOT/hooks/check_deferred_actions.py\"",
+            "commandWindows": "python \"${PLUGIN_ROOT}/hooks/check_deferred_actions.py\"",
             "timeout": 10
           }
         ]
@@ -16,7 +27,19 @@
         "hooks": [
           {
             "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/hooks/post_write_doc_standard_check.py\"",
+            "commandWindows": "python \"${PLUGIN_ROOT}/hooks/post_write_doc_standard_check.py\"",
+            "timeout": 5
+          }
+        ],
+        "matcher": "^(apply_patch|Write|Edit)$"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
             "command": "python3 \"$PLUGIN_ROOT/hooks/post_write_md_check.py\"",
+            "commandWindows": "python \"${PLUGIN_ROOT}/hooks/post_write_md_check.py\"",
             "timeout": 5
           }
         ],
@@ -27,21 +50,22 @@
           {
             "type": "command",
             "command": "python3 \"$PLUGIN_ROOT/hooks/post_write_memory_gate.py\"",
+            "commandWindows": "python \"${PLUGIN_ROOT}/hooks/post_write_memory_gate.py\"",
             "timeout": 5
           }
         ],
         "matcher": "^(apply_patch|Write|Edit)$"
-      }
-    ],
-    "SessionEnd": [
+      },
       {
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$PLUGIN_ROOT/hooks/session_end_autocommit.py\"",
-            "timeout": 15
+            "command": "python3 \"$PLUGIN_ROOT/hooks/post_write_principles_read_check.py\"",
+            "commandWindows": "python \"${PLUGIN_ROOT}/hooks/post_write_principles_read_check.py\"",
+            "timeout": 5
           }
-        ]
+        ],
+        "matcher": "^(apply_patch|Write)$"
       }
     ],
     "SessionStart": [
@@ -50,8 +74,19 @@
           {
             "type": "command",
             "command": "python3 \"$PLUGIN_ROOT/hooks/session_start_load_rules.py\"",
+            "commandWindows": "python \"${PLUGIN_ROOT}/hooks/session_start_load_rules.py\"",
             "timeout": 10,
             "additionalContextLimit": 0
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/hooks/session_start_selfcheck.py\"",
+            "commandWindows": "python \"${PLUGIN_ROOT}/hooks/session_start_selfcheck.py\"",
+            "timeout": 10
           }
         ]
       }

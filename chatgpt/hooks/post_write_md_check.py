@@ -17,11 +17,40 @@ import re
 import sys
 
 
-# CLAUDE.md — управляющий файл харнесса Claude Code (иерархический, грузится
-# автоматически по папкам), не KH-документ; таблица метаданных ему не нужна
-# (корневой CLAUDE.md её тоже не имеет).
-SKIP_FILENAMES = {"README.md", "CHANGELOG.md", "changelog.md", "CLAUDE.md", "SETUP.md", "INSTANCE.md"}
+# Управляющие файлы агентов — не документы базы знаний, а инструкции среде:
+# грузятся автоматически, читаются целиком, карточка «Назначение» им не нужна
+# (наш собственный CLAUDE.md её тоже не имеет).
+#
+# Перечисляются ИМЕНА, но признак не имя, а роль. Список писался, когда мы
+# знали одну экосистему, и AGENTS.md — файл ровно той же природы у Codex —
+# блокировался как документ без шапки. Проверено прогоном 2026-09-01: block
+# на корректном системном файле. Появится третья среда — дописать сюда, а не
+# объяснять получателю, почему его управляющий файл «оформлен неверно».
+AGENT_CONTROL_FILES = {
+    "CLAUDE.md",           # Claude Code
+    "AGENTS.md",           # Codex, вендор-нейтральный стандарт
+    "AGENTS.override.md",  # Codex, локальное переопределение
+    "GEMINI.md",           # Gemini CLI
+    ".cursorrules",        # Cursor
+}
+
+SKIP_FILENAMES = {"README.md", "CHANGELOG.md", "changelog.md",
+                  "SETUP.md", "INSTANCE.md"} | AGENT_CONTROL_FILES
 SKIP_PATH_PARTS = {"node_modules", ".git", ".claude", "__pycache__", "legacy", "archive", "versions", "Outbound", "CRM", ".sync-state"}
+
+# Настройка получателем: у него своя структура каталогов и свои жанры
+# документов, для которых шапка не нужна. Без этого проверка навязывает наше
+# представление о том, где живут документы (ревью поставки 2026-09-01).
+#   IVAN_MD_SKIP_DIRS   — каталоги через запятую, добавляются к SKIP_PATH_PARTS
+#   IVAN_MD_SKIP_FILES  — имена файлов через запятую
+#   IVAN_MD_ONLY_DIRS   — если задано, проверяются ТОЛЬКО эти каталоги
+def _env_set(name):
+    raw = os.environ.get(name, "")
+    return {x.strip() for x in raw.split(",") if x.strip()}
+
+
+SKIP_PATH_PARTS |= _env_set("IVAN_MD_SKIP_DIRS")
+ONLY_PATH_PARTS = _env_set("IVAN_MD_ONLY_DIRS")
 
 # Документы по шаблонам правила «стандарт оформления документов» (instructions/templates/) используют
 # YAML frontmatter как единственный источник метаданных — без таблицы.
@@ -223,12 +252,16 @@ def main():
         return
 
     basename = os.path.basename(file_path)
-    if basename in SKIP_FILENAMES:
+    if basename in (SKIP_FILENAMES | _env_set("IVAN_MD_SKIP_FILES")):
         return
 
+    parts = file_path.replace("\\", "/").split("/")
     for part in SKIP_PATH_PARTS:
-        if part in file_path.split(os.sep):
+        if part in parts:
             return
+    # Ограничение области: задан белый список — всё вне его не наше дело.
+    if ONLY_PATH_PARTS and not (ONLY_PATH_PARTS & set(parts)):
+        return
 
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -305,14 +338,12 @@ def main():
         print(json.dumps({
             "decision": "warn",
             "reason": (
-                f"[post_write_md_check] {basename}: YAML-frontmatter без поля "
-                f"`description`.\n"
+                f"У документа {basename} нет строки, объясняющей, о чём он.\n"
                 f"Fix: добавить в frontmatter строку\n"
                 f"  description: <1–3 предложения, ≤100 слов: для кого документ, "
                 f"что забирают, когда читать>\n"
-                f"Таблицу метаданных НЕ добавлять — стандарт запрещает двойную "
-                f"шапку (document-writing-standards §Формат шапки). У документа "
-                f"с YAML-frontmatter карточку несёт `description`."
+                f"Вторую шапку не добавляйте: у такого документа карточку "
+                f"несёт именно эта строка."
             ),
         }), file=sys.stderr)
         return
@@ -323,8 +354,10 @@ def main():
         print(json.dumps({
             "decision": "block",
             "reason": (
-                f"[post_write_md_check] Файл {basename} создан без таблицы метаданных.\n"
-                f"Fix: вставить в начало файла (до H1) шаблон:\n"
+                f"Документ {basename} сохранён без карточки назначения.\n"
+                f"По правилу оформления каждый документ начинается с "
+                f"карточки: по ней его находят, не читая целиком.\n"
+                f"Допишите в начало файла, до заголовка:\n"
                 f"  | Параметр | Значение |\n"
                 f"  |----------|----------|\n"
                 f"  | Версия | 1.0.0 |\n"
@@ -333,12 +366,10 @@ def main():
                 f"  | Создан | <YYYY-MM-DD> |\n"
                 f"  | Обновлён | <YYYY-MM-DD> |\n"
                 f"  | Назначение | <1–3 предложения, ≤100 слов: для кого, что забирают> |\n"
-                f"Исключение: README.md / CHANGELOG.md; slice-v3 meeting-view "
-                f"(YAML frontmatter с `meeting_type:`, напр. {{date}}-views/okr-master.md) — "
-                f"освобождён (SP-114). ⚠️ Обычная выжимка встречи (product/ad-hoc, без "
-                f"`meeting_type:` в YAML) под это исключение НЕ попадает — ей нужна "
-                f"таблица метаданных ИЛИ явное добавление в SKIP_FILENAMES. Если тип "
-                f"документа не требует метаданных — добавить файл в SKIP_FILENAMES этого hook'а."
+                f"Без карточки обходятся README и журнал изменений.\n"
+                f"Спросят подробности или как отключить — это проверка "
+                f"оформления, файл hooks/post_write_md_check.py в папке "
+                f"установки. Сама по себе она не называется, пока не спросили."
             ),
         }))
         return
@@ -349,12 +380,12 @@ def main():
         print(json.dumps({
             "decision": "block",
             "reason": (
-                f"[post_write_md_check] {basename}: нет поля «Назначение» в таблице метаданных.\n"
-                f"Fix: добавить строку в таблицу метаданных:\n"
+                f"В карточке документа {basename} не заполнено назначение — "
+                f"для кого он и что из него забирают.\n"
+                f"Допишите строку:\n"
                 f"  | Назначение | <1–3 предложения, ≤100 слов: для кого документ, "
                 f"что забирают, когда читать> |\n"
-                f"Это карточка файла для агентов (kh-check Проверка A). "
-                f"SSOT: requirements.md §2.0."
+                f"Это то, по чему документ находят, не открывая."
             ),
         }), file=sys.stderr)
         return
@@ -377,18 +408,18 @@ def check_obnovlen(basename: str, head: str) -> None:
     print(json.dumps({
         "decision": "warn",
         "reason": (
-            f"[post_write_md_check] {basename}: поле «Обновлён» несёт журнал "
-            f"({len(value)} символов, порог {OBNOVLEN_MAX}).\n"
-            f"Fix (П13): оставить в поле одну текущую запись — дата + строка сути "
+            f"В карточке {basename} поле «Обновлён» разрослось в журнал "
+            f"({len(value)} символов).\n"
+            f"Оставьте одну текущую запись — дата и строка сути "
             f"(≤200 символов), прежние перенести в раздел в конце документа:\n"
             f"  ## История изменений\n"
             f"  | Дата | Что изменилось |\n"
             f"  |------|----------------|\n"
             f"  | <YYYY-MM-DD> | <что изменилось> |\n"
-            f"Правило записи — REPLACE, не append: новая правка заменяет поле, "
-            f"прежнее уходит первой строкой журнала. Цепочка «Ранее … Ранее …» "
-            f"внутри ячейки запрещена.\n"
-            f"SSOT: document-writing-standards.md §П13."
+            f"Новая правка заменяет поле, прежняя запись уходит первой "
+            f"строкой журнала: цепочка «Ранее … Ранее …» внутри одной "
+            f"ячейки не нужна.\n"
+            f"Правило целиком — knowledge/document-writing-standards.md."
         ),
     }))
     return

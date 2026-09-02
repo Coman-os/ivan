@@ -2,18 +2,23 @@
   "figure": {
     "stage": "v3",
     "rules_source": "clean-src/v3-ivan/root-CLAUDE.md",
-    "rules_sha": "104323ffed51",
-    "rules_count": 21
+    "rules_sha": "5d555915a9c7",
+    "rules_count": 18
   },
   "harness": {
-    "version": "1.1.0",
+    "version": "2.0.0",
     "hooks": [
       "_host_adapter.py",
+      "_transcript_io.py",
+      "check_closing_handoff.py",
       "check_deferred_actions.py",
+      "post_write_doc_standard_check.py",
       "post_write_md_check.py",
       "post_write_memory_gate.py",
-      "session_end_autocommit.py",
-      "session_start_load_rules.py"
+      "post_write_principles_read_check.py",
+      "secret-scan.py",
+      "session_start_load_rules.py",
+      "session_start_selfcheck.py"
     ],
     "skills": [
       "close-session",
@@ -46,5 +51,5 @@
     "журнал прецедентов правил",
     "операционные правила клиента (overlay)"
   ],
-  "built_at_version": "1.1.0"
+  "built_at_version": "2.0.0"
 }

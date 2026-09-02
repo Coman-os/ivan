@@ -3,7 +3,7 @@
 | Параметр | Значение |
 |----------|----------|
 | Версия | 1.1 |
-| Слой | Layer 2 (SCL) |
+| Слой | knowledge-hub |
 | principle_layer | 0 (размещение и структура файлов) — см. principles-architecture.md |
 | Статус | ✅ Active |
 | Owner | Максим Опилкин |
@@ -21,7 +21,7 @@
 | [context-distribution-rules.md](knowledge/context-distribution-rules.md) | КУДА — Decision Tree для размещения любого документа |
 | knowledge-core-structure.md | КАК — внутреннее устройство KC (genesis, индексы, KC Link Keeper) |
 
-**Тип:** Skill (Layer 2: SCL, домен knowledge-hub)
+**Тип:** документ домена knowledge-hub
 - Содержит правила интерпретации (SSOT, Channel-First)
 - Зависит от контекста (роли, каналы)
 - Определяет HOW TO THINK, не WHAT EXISTS
