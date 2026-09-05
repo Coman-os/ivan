@@ -283,13 +283,65 @@ def run_main(main):
     forms = read_inputs(raw)
     if not forms:
         return 0
+    try:
+        event = (json.loads(raw) or {}).get("hook_event_name", "")
+    except (ValueError, TypeError, AttributeError):
+        event = ""
 
     for hook_input in forms:
         sys.stdin = io.StringIO(json.dumps(hook_input, ensure_ascii=False))
+        real_out, real_err = sys.stdout, sys.stderr
+        out_buf, err_buf = io.StringIO(), io.StringIO()
+        sys.stdout, sys.stderr = out_buf, err_buf
         try:
             code = main()
         except SystemExit as exc:
             code = exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
+        finally:
+            sys.stdout, sys.stderr = real_out, real_err
+        out_text, err_text = out_buf.getvalue(), err_buf.getvalue()
+        relayed = relay_warning(out_text, err_text, code, event)
+        real_out.write(relayed if relayed else out_text)
+        real_out.flush()
+        if err_text:
+            real_err.write(err_text)
+            real_err.flush()
         if code:
             return code
     return 0
+
+
+# Предел текста, который уходит модели одним предупреждением: длинный список
+# нарушений режется, полный остаётся человеку в stderr.
+ADDITIONAL_CONTEXT_LIMIT = 1500
+
+
+def relay_warning(out_text, err_text, code, event):
+    """Предупреждение будильника — модели, а не только в транскрипт.
+
+    Факт платформы (проверен живым прогоном 2026-09-03 в нашем репозитории):
+    при выходе 0 stderr хука видит только человек в транскрипте, к модели
+    доходит один JSON на stdout с `hookSpecificOutput.additionalContext`.
+    Хук, который «предупреждает» текстом в stderr и выходит нулём, у модели
+    не срабатывает никогда — класс «тихий успех интерфейса» (правило 22-bis).
+
+    У нас перелив делает диспетчер `run_hook.py` (решение владельца
+    2026-09-03, адресат — модель). В поставку диспетчер не едет, хуки там
+    запускаются напрямую — и до 2026-09-04 поставка везла будильники, которых
+    модель получателя не слышала. Адаптер — единственная точка, через которую
+    у получателя проходит каждый хук, поэтому перелив живёт здесь.
+
+    Условия — те же, что у диспетчера: выход 0, stderr не пуст, stdout пуст
+    (хук, отдавший свой JSON, не трогаем), событие PostToolUse (у Stop и
+    SessionStart своя схема ответа). Возвращает строку для stdout либо None.
+    """
+    if code not in (0, None):
+        return None
+    if event != "PostToolUse":
+        return None
+    if out_text.strip() or not err_text.strip():
+        return None
+    return json.dumps({"hookSpecificOutput": {
+        "hookEventName": "PostToolUse",
+        "additionalContext": err_text.strip()[:ADDITIONAL_CONTEXT_LIMIT],
+    }}, ensure_ascii=False) + "\n"
