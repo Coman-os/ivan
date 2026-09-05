@@ -1,6 +1,6 @@
 # Иван — установка в ChatGPT Work
 
-**Версия:** 2.2.1 · журнал изменений — [CHANGELOG.md](https://github.com/Coman-os/ivan/blob/main/CHANGELOG.md)
+**Версия:** 2.4.0 · журнал изменений — [CHANGELOG.md](https://github.com/Coman-os/ivan/blob/main/CHANGELOG.md)
 
 ## Что внутри
 - `.codex-plugin/plugin.json` — манифест плагина.
