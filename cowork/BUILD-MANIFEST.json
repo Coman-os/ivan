@@ -2,11 +2,11 @@
   "figure": {
     "stage": "v3",
     "rules_source": "clean-src/v3-ivan/root-CLAUDE.md",
-    "rules_sha": "a34ec61a7840",
+    "rules_sha": "429468628f42",
     "rules_count": 18
   },
   "harness": {
-    "version": "2.2.0",
+    "version": "2.2.1",
     "hooks": [
       "_host_adapter.py",
       "_transcript_io.py",
@@ -50,5 +50,5 @@
     "журнал прецедентов правил",
     "операционные правила клиента (overlay)"
   ],
-  "built_at_version": "2.2.0"
+  "built_at_version": "2.2.1"
 }
