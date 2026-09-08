@@ -7,7 +7,8 @@
             "type": "command",
             "command": "python3 \"$PLUGIN_ROOT/hooks/check_closing_handoff.py\"",
             "commandWindows": "python \"${PLUGIN_ROOT}/hooks/check_closing_handoff.py\"",
-            "timeout": 15
+            "timeout": 15,
+            "statusMessage": "Проверка завершающего вопроса"
           }
         ]
       },
@@ -17,7 +18,8 @@
             "type": "command",
             "command": "python3 \"$PLUGIN_ROOT/hooks/check_deferred_actions.py\"",
             "commandWindows": "python \"${PLUGIN_ROOT}/hooks/check_deferred_actions.py\"",
-            "timeout": 10
+            "timeout": 10,
+            "statusMessage": "Проверка обещаний на будущее"
           }
         ]
       }
@@ -29,7 +31,8 @@
             "type": "command",
             "command": "python3 \"$PLUGIN_ROOT/hooks/post_write_doc_standard_check.py\"",
             "commandWindows": "python \"${PLUGIN_ROOT}/hooks/post_write_doc_standard_check.py\"",
-            "timeout": 5
+            "timeout": 5,
+            "statusMessage": "Проверка оформления документа"
           }
         ],
         "matcher": "^(apply_patch|Write|Edit)$"
@@ -40,7 +43,8 @@
             "type": "command",
             "command": "python3 \"$PLUGIN_ROOT/hooks/post_write_md_check.py\"",
             "commandWindows": "python \"${PLUGIN_ROOT}/hooks/post_write_md_check.py\"",
-            "timeout": 5
+            "timeout": 5,
+            "statusMessage": "Проверка карточки документа"
           }
         ],
         "matcher": "^(apply_patch|Write)$"
@@ -51,7 +55,8 @@
             "type": "command",
             "command": "python3 \"$PLUGIN_ROOT/hooks/post_write_memory_gate.py\"",
             "commandWindows": "python \"${PLUGIN_ROOT}/hooks/post_write_memory_gate.py\"",
-            "timeout": 5
+            "timeout": 5,
+            "statusMessage": "Проверка записи в память"
           }
         ],
         "matcher": "^(apply_patch|Write|Edit)$"
@@ -62,7 +67,8 @@
             "type": "command",
             "command": "python3 \"$PLUGIN_ROOT/hooks/post_write_principles_read_check.py\"",
             "commandWindows": "python \"${PLUGIN_ROOT}/hooks/post_write_principles_read_check.py\"",
-            "timeout": 5
+            "timeout": 5,
+            "statusMessage": "Проверка чтения принципов"
           }
         ],
         "matcher": "^(apply_patch|Write)$"
@@ -76,6 +82,7 @@
             "command": "python3 \"$PLUGIN_ROOT/hooks/session_start_load_rules.py\"",
             "commandWindows": "python \"${PLUGIN_ROOT}/hooks/session_start_load_rules.py\"",
             "timeout": 10,
+            "statusMessage": "Загрузка правил Ивана",
             "additionalContextLimit": 0
           }
         ]
@@ -86,7 +93,8 @@
             "type": "command",
             "command": "python3 \"$PLUGIN_ROOT/hooks/session_start_selfcheck.py\"",
             "commandWindows": "python \"${PLUGIN_ROOT}/hooks/session_start_selfcheck.py\"",
-            "timeout": 10
+            "timeout": 10,
+            "statusMessage": "Диагностика установки Ивана"
           }
         ]
       }

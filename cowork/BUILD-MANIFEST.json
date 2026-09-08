@@ -1,4 +1,40 @@
 {
+  "support": {
+    "repo": "Coman-os/ivan",
+    "issues": "https://github.com/Coman-os/ivan/issues",
+    "discussions": "https://github.com/Coman-os/ivan/discussions",
+    "api": "https://api.github.com",
+    "marketplace": "https://raw.githubusercontent.com/Coman-os/ivan/main/.claude-plugin/marketplace.json"
+  },
+  "files": {
+    "hooks/_host_adapter.py": "4da161246b68",
+    "hooks/_support_lookup.py": "745cded49d7c",
+    "hooks/_transcript_io.py": "f28f0e1ac58d",
+    "hooks/check_closing_handoff.py": "60b0fd04e5cb",
+    "hooks/check_deferred_actions.py": "e68ce848a0fc",
+    "hooks/post_write_doc_standard_check.py": "1d2b09576886",
+    "hooks/post_write_md_check.py": "5fdb40e51c9c",
+    "hooks/post_write_memory_gate.py": "214728f3a4af",
+    "hooks/post_write_principles_read_check.py": "4b6ac2ae4a9a",
+    "hooks/secret-scan.py": "930e065cc37f",
+    "hooks/session_start_load_rules.py": "9c8364be827b",
+    "hooks/session_start_selfcheck.py": "ca44424b7826",
+    "knowledge/agent-design-principles.md": "d1ebad02d5c6",
+    "knowledge/context-distribution-rules.md": "995f6c4c916b",
+    "knowledge/document-lifecycle.md": "2f11c5a6fcbe",
+    "knowledge/document-writing-standards.md": "540e8bcb8b00",
+    "knowledge/git-commits.md": "77c59133c51d",
+    "knowledge/knowledge-hub-design-principles.md": "1d8332dd3ddc",
+    "knowledge/language-preferences.md": "52e3f44b639d",
+    "knowledge/operating-principles.md": "6d35a746da50",
+    "skills/close-session/SKILL.md": "46ce32d0f497",
+    "skills/deep-research/SKILL.md": "9add7251a394",
+    "skills/dialectic-partner/SKILL.md": "dc5bf8175b0e",
+    "skills/ivan-rules/SKILL.md": "9bd05a5943a8",
+    "skills/ivan-setup/SKILL.md": "9dbd15280156",
+    "skills/ivan-support/SKILL.md": "a332e1cbaffb",
+    "skills/kh-check/SKILL.md": "52c9571b5497"
+  },
   "figure": {
     "stage": "v3",
     "rules_source": "clean-src/v3-ivan/root-CLAUDE.md",
@@ -6,19 +42,24 @@
     "rules_count": 18
   },
   "harness": {
-    "version": "2.4.0",
+    "version": "2.5.0",
     "hooks": [
-      "_host_adapter.py",
-      "_transcript_io.py",
       "check_closing_handoff.py",
       "check_deferred_actions.py",
       "post_write_doc_standard_check.py",
       "post_write_md_check.py",
       "post_write_memory_gate.py",
       "post_write_principles_read_check.py",
-      "secret-scan.py",
       "session_start_load_rules.py",
       "session_start_selfcheck.py"
+    ],
+    "hook_modules": [
+      "_host_adapter.py",
+      "_support_lookup.py",
+      "_transcript_io.py"
+    ],
+    "tools": [
+      "secret-scan.py"
     ],
     "skills": [
       "close-session",
@@ -26,6 +67,7 @@
       "dialectic-partner",
       "ivan-rules",
       "ivan-setup",
+      "ivan-support",
       "kh-check"
     ],
     "knowledge": [
@@ -50,5 +92,5 @@
     "журнал прецедентов правил",
     "операционные правила клиента (overlay)"
   ],
-  "built_at_version": "2.4.0"
+  "built_at_version": "2.5.0"
 }

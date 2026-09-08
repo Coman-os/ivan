@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Найти настоящий Python и записать его абсолютный путь в конфиг поставки.
+"""Диагностика Python для проверок качества — только чтением.
 
-Зачем. Команды запуска проверок прописаны именем интерпретатора, а единого
-имени не существует ни в одну сторону:
+Зачем. Проверки написаны на Python, а команды их запуска зовут интерпретатор
+по имени, и единого имени не существует ни в одну сторону:
 
   · на Mac есть только `python3`; `python` и `py` отсутствуют — проверено
     на машине разработки;
@@ -10,23 +10,36 @@
     отмеченной галочке установщика (по умолчанию снята), `py` — при
     установке с сайта и отсутствует при установке из магазина или Anaconda.
 
-Замена `python3` на `python` переносит поломку с Windows на Mac, а не
-устраняет её. Поэтому имя не угадывается, а один раз определяется при
-установке; дальше команды зовут найденный ПУТЬ.
-
 Заглушка магазина приложений. Windows кладёт в PATH исполняемый файл
 `python3.exe`, который на любой запуск печатает «Python не найден» и выходит
 ненулевым кодом. Он проходит проверку «файл существует и исполняется», то
 есть выглядит рабочим интерпретатором вплоть до момента запуска. Отличается
-только делом: настоящий Python на `-c` печатает версию, заглушка — нет.
+только делом: настоящий Python на `-c` печатает ответ, заглушка — нет.
 
-Почему не переписать проверки на Node, устранив зависимость целиком:
-отвергнуто по цене — пять скриптов, из них проверка документов на 700 строк.
+Что скрипт ДЕЛАЕТ: перебирает кандидатов, заставляет каждого выполнить код и
+вернуть путь и версию в JSON, сравнивает числовую пару версии с минимумом.
+Печатает итог человеку либо JSON (`--json`).
 
-Запускается навыком знакомства `ivan-setup` один раз при установке.
-Печатает человекочитаемый итог и кладёт JSON рядом с собой.
+Чего НЕ делает по умолчанию: не пишет в каталог пакета и не правит команды
+запуска. Прежняя редакция клала `python-path.json` рядом с собой и
+переписывала `hooks/hooks.json` — на живой установке Codex 08.09.2026 это
+кончилось «Operation not permitted»: каталог установленного плагина там
+только для чтения, а подтверждение проверок привязано к содержимому файлов.
+Запись результата — только в каталог данных плагина, если среда его даёт
+(`PLUGIN_DATA` / `CLAUDE_PLUGIN_DATA`). Подстановка пути в команды осталась
+за явным флагом `--apply` для сред с записываемым каталогом (Claude Code);
+цена — на Codex её нет, и на Windows команды остаются на имени.
 
-Класс: регламент (часть обвязки установки). Точка — установка поставки.
+Четыре исхода, и они не сводятся друг к другу:
+  ok        — найден подходящий Python, код выполнен;
+  too_old   — интерпретатор есть, версия ниже минимума (названа);
+  not_found — ни один кандидат не ответил как Python;
+  blocked   — запуск кандидатов запрещён средой либо ответ неоднозначен.
+«Запрещён» не превращается в «отсутствует»: это разные советы человеку.
+
+Запускается навыком знакомства `ivan-setup` и по просьбе «проверь Python».
+
+Класс: будильник (говорит, не меняет). Точка — установка и просьба.
 Сигнал деградации — проверки молчат у получателя, у которого Python есть.
 """
 
@@ -50,70 +63,146 @@ CANDIDATES = (
     ["python"],
 )
 
-# Ниже этой версии наши проверки не запускаются: они пользуются
-# `sys.stdlib_module_names` (3.10+) и разбором через ast с современными
-# полями. Найденный Python 2 или ранний 3.x хуже отсутствия — он выглядит
-# годным и падает на первом же запуске.
-MIN_VERSION = (3, 9)
+# Ниже этой версии проверки не запускаются: самодиагностика пользуется
+# `sys.stdlib_module_names`, появившимся в 3.10. Найденный ранний 3.x хуже
+# отсутствия — он выглядит годным и падает на первом же запуске. Прежний
+# минимум (3, 9) противоречил этому и снят 08.09.2026.
+MIN_VERSION = (3, 10)
 
-# Что печатает проба. Спрашиваем именно ПУТЬ и версию одной строкой:
-# `sys.executable` даёт абсолютный путь к настоящему исполняемому файлу даже
-# тогда, когда звали через лаунчер `py`, — а нам нужен путь, а не имя.
-PROBE = ("import sys;"
-         "print('OK', sys.executable, '%d.%d' % sys.version_info[:2])")
+# Что печатает проба — JSON одной строкой. Прежняя редакция печатала путь
+# через пробел и разбирала `split()`: путь вида `C:\\Program Files\\...`
+# распадался на части, версия не разбиралась, настоящий Python выглядел
+# заглушкой. `sys.executable` даёт абсолютный путь к настоящему файлу даже
+# при вызове через лаунчер `py`.
+PROBE = ("import sys,json;"
+         "print(json.dumps({'executable':sys.executable,"
+         "'version':list(sys.version_info[:3])}))")
 
 
-def probe(cmd):
-    """Запустить кандидата и убедиться, что это настоящий Python.
+def parse_probe_output(stdout):
+    """(путь, (major, minor, micro)) из ответа пробы либо None.
 
-    Возвращает (абсолютный путь, версия) либо None.
-
-    Проверяется ДЕЛОМ, а не наличием файла: заглушка магазина существует,
-    исполняется и отвечает — просто не то. Единственный надёжный различитель
-    — заставить кандидата выполнить код и вернуть ожидаемое.
+    Берётся последняя непустая строка: обёртки печатают баннер перед ответом.
     """
+    lines = [ln for ln in (stdout or "").splitlines() if ln.strip()]
+    if not lines:
+        return None
     try:
-        r = subprocess.run(cmd + ["-c", PROBE],
-                           capture_output=True, text=True, timeout=15)
-    except (OSError, subprocess.SubprocessError):
+        data = json.loads(lines[-1])
+        path = data["executable"]
+        version = tuple(int(x) for x in data["version"][:3])
+    except (ValueError, KeyError, TypeError):
         return None
-    if r.returncode != 0:
-        return None
-    parts = (r.stdout or "").strip().split()
-    # Метка OK — против кандидата, который вернул ноль, но напечатал не то
-    # (обёртки, печатающие баннер; заглушки, отвечающие подсказкой).
-    if len(parts) < 3 or parts[0] != "OK":
-        return None
-    path, version = parts[1], parts[2]
-    try:
-        major, minor = (int(x) for x in version.split(".")[:2])
-    except ValueError:
-        return None
-    if (major, minor) < MIN_VERSION:
-        return None
-    if not os.path.isabs(path) or not os.path.exists(path):
+    if not isinstance(path, str) or not path:
         return None
     return path, version
 
 
-def detect():
-    """Первый кандидат, оказавшийся настоящим Python нужной версии."""
-    # Интерпретатор, которым запущен сам этот скрипт, — уже доказанный
-    # рабочий Python: он выполняет этот код. Но берётся он НЕ первым: скрипт
-    # мог быть запущен временным интерпретатором (виртуальное окружение
-    # установщика), которого в следующей сессии не будет. Сначала ищем
-    # устойчивое имя в системе, свой путь — как запасной.
+def classify(path, version):
+    """Вердикт по разобранному ответу пробы."""
+    if version[:2] < MIN_VERSION:
+        return "too_old"
+    if not os.path.isabs(path) or not os.path.exists(path):
+        return "not_python"
+    return "ok"
+
+
+def probe(cmd, run=subprocess.run):
+    """Запустить кандидата и сказать, что это.
+
+    Возвращает словарь со `status` из {ok, too_old, not_python, blocked,
+    missing} и, где есть, `path` / `version` / `error`.
+
+    Проверяется ДЕЛОМ, а не наличием файла: заглушка магазина существует,
+    исполняется и отвечает — просто не то. `run` подменяется в тестах.
+    """
+    try:
+        r = run(cmd + ["-c", PROBE], capture_output=True, text=True, timeout=15)
+    except FileNotFoundError:
+        return {"status": "missing"}
+    except PermissionError as exc:
+        return {"status": "blocked", "error": str(exc)}
+    except (OSError, subprocess.SubprocessError) as exc:
+        return {"status": "blocked", "error": str(exc)}
+    if r.returncode != 0:
+        return {"status": "not_python"}
+    parsed = parse_probe_output(r.stdout)
+    if not parsed:
+        return {"status": "not_python"}
+    path, version = parsed
+    return {"status": classify(path, version), "path": path,
+            "version": "%d.%d.%d" % version, "version_tuple": list(version)}
+
+
+def detect(run=subprocess.run):
+    """Итог по всем кандидатам.
+
+    Первый `ok` побеждает. Иначе: был `too_old` → он (с максимальной
+    версией); был `blocked` → blocked; иначе not_found. Интерпретатор,
+    которым запущен сам скрипт, — последний кандидат: он доказанно
+    работает, но мог быть временным (окружение установщика).
+    """
+    tried = []
     for cmd in CANDIDATES:
         if not shutil.which(cmd[0]):
+            tried.append({"command": " ".join(cmd), "status": "missing"})
             continue
-        found = probe(cmd)
-        if found:
-            return found[0], found[1], " ".join(cmd)
+        res = probe(cmd, run)
+        res["command"] = " ".join(cmd)
+        tried.append(res)
+        if res["status"] == "ok":
+            return _summary("ok", res, tried)
     if os.path.isabs(sys.executable) and os.path.exists(sys.executable):
-        return (sys.executable,
-                "%d.%d" % sys.version_info[:2],
-                "интерпретатор запуска")
-    return None, None, None
+        me = {"command": "интерпретатор запуска", "path": sys.executable,
+              "version": "%d.%d.%d" % sys.version_info[:3],
+              "version_tuple": list(sys.version_info[:3]),
+              "status": classify(sys.executable, sys.version_info[:3])}
+        tried.append(me)
+        if me["status"] == "ok":
+            return _summary("ok", me, tried)
+    old = [t for t in tried if t["status"] == "too_old"]
+    if old:
+        best = max(old, key=lambda t: t["version_tuple"])
+        return _summary("too_old", best, tried)
+    if any(t["status"] == "blocked" for t in tried):
+        return _summary("blocked", None, tried)
+    return _summary("not_found", None, tried)
+
+
+def _summary(status, hit, tried):
+    out = {"status": status, "min_version": "%d.%d" % MIN_VERSION,
+           "found": status == "ok", "tried": tried}
+    if hit:
+        out["python"] = hit.get("path")
+        out["version"] = hit.get("version")
+        out["via"] = hit.get("command")
+    return out
+
+
+def data_dir():
+    """Каталог данных плагина, если среда его даёт. Иначе None — не пишем."""
+    for var in ("PLUGIN_DATA", "CLAUDE_PLUGIN_DATA"):
+        d = os.environ.get(var)
+        if d:
+            return d
+    return None
+
+
+def save_result(result):
+    """Записать итог в каталог данных плагина. Отказ — не ошибка."""
+    d = data_dir()
+    if not d:
+        return None
+    try:
+        os.makedirs(d, exist_ok=True)
+        out = os.path.join(d, "python-path.json")
+        with open(out, "w", encoding="utf-8") as f:
+            json.dump({k: result.get(k) for k in
+                       ("status", "found", "python", "version", "via")},
+                      f, ensure_ascii=False, indent=2)
+        return out
+    except OSError:
+        return None
 
 
 # Как команда выглядит до подстановки. Ровно эти формы пишут оба сборщика.
@@ -121,23 +210,16 @@ NAME_PREFIXES = ('python3 "', 'python "')
 
 
 def patch_commands(path):
-    """Подставить найденный путь в команды запуска проверок.
+    """Подставить найденный путь в команды запуска — только по `--apply`.
 
-    Пока команда зовёт ИМЯ, запуск остаётся вероятным: имя разрешается через
-    PATH, а PATH на Windows приводит к заглушке магазина. Подставленный
-    абсолютный путь делает запуск определённым.
+    Правится `hooks/hooks.json` установленного пакета. Работает там, где
+    каталог пакета записываем (Claude Code). На Codex каталог только для
+    чтения, и подтверждение проверок привязано к содержимому: правка либо
+    не пройдёт, либо снимет подтверждение. Возвращает число изменённых
+    команд; отказ среды — 0 с сообщением у вызывающего.
 
-    Правится `hooks/hooks.json` установленного пакета — тот самый файл, из
-    которого платформа берёт команды. Обе поставки хранят его одинаково, и
-    правка одна на обе.
-
-    Возвращает число изменённых команд.
-
-    ЦЕНА, которую надо знать: обновление плагина перезаписывает каталог, и
-    подстановка слетает — команды возвращаются к имени. На Mac это ничего не
-    меняет (имя там разрешается), на Windows проверки замолкают снова.
-    Ловит это самодиагностика при старте: она видит команды и говорит, если
-    подстановка откатилась.
+    Цена, которую надо знать: обновление плагина перезаписывает каталог, и
+    подстановка слетает.
     """
     root = os.path.dirname(os.path.abspath(__file__))
     conf = os.path.join(root, "hooks", "hooks.json")
@@ -148,21 +230,12 @@ def patch_commands(path):
             raw = f.read()
     except OSError:
         return 0
-
-    # Кавычки вокруг пути обязательны: он часто содержит пробелы — и в
-    # каталоге программ Windows, и в домашней папке с именем и фамилией.
-    # Без кавычек команда распадается на части, и запускается не то.
-    quoted = json.dumps(path, ensure_ascii=False) if '"' not in path else None
-    if quoted is None:
+    if '"' in path:
         return 0
-    # Внутри JSON-строки кавычки уже экранированы, поэтому подставляем
-    # экранированную форму, а не сырую.
-    escaped = quoted[1:-1].replace('"', '\\"')
+    escaped = json.dumps(path, ensure_ascii=False)[1:-1].replace('"', '\\"')
     replacement = '\\"' + escaped + '\\" \\"'
-
     changed = 0
     for prefix in NAME_PREFIXES:
-        marker = prefix[:-1] + ' \\"'  # `python3 \"` в тексте JSON
         marker = prefix.replace(' "', ' \\"')
         n = raw.count(marker)
         if n:
@@ -171,7 +244,7 @@ def patch_commands(path):
     if not changed:
         return 0
     try:
-        json.loads(raw)  # не отдать платформе сломанный конфиг
+        json.loads(raw)
     except ValueError:
         return 0
     try:
@@ -182,53 +255,60 @@ def patch_commands(path):
     return changed
 
 
-def main():
-    path, version, via = detect()
+HUMAN = {
+    "ok": "Python найден: {python} (версия {version}, через {via}). Код выполнен.",
+    "too_old": ("Python есть, но старый: {version} по пути {python}. Нужен "
+                "{min_version} или новее — три точка десять, не 3.1. "
+                "Обновите с python.org и попросите проверить снова."),
+    "not_found": ("Python на этой машине не найден: ни один кандидат не "
+                  "ответил как интерпретатор.\n\n"
+                  "Без него не работают автоматические проверки качества: "
+                  "документы сохранятся без положенного оформления, и никто "
+                  "об этом не скажет.\n\n"
+                  "Что сделать: поставить Python {min_version} или новее с "
+                  "python.org (Windows — отметить в установщике галочку "
+                  "«Add python.exe to PATH»), затем попросить проверить "
+                  "снова. Из Microsoft Store ставить не стоит: оттуда "
+                  "приходит урезанная сборка."),
+    "blocked": ("Проверить не удалось: запуск интерпретатора запрещён средой "
+                "или ответ неоднозначен. Это НЕ означает, что Python "
+                "отсутствует. Разрешите проверку либо выполните её из "
+                "обычной сессии."),
+}
 
-    out = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                       "python-path.json")
-    if not path:
-        # Молчание здесь — ровно тот дефект, против которого заведена
-        # самодиагностика: «не нашли» обязано звучать, а не выходить кодом.
-        print("Python на этой машине не найден.\n"
-              "\n"
-              "Без него не работают автоматические проверки качества: "
-              "документы сохранятся без положенного оформления, и никто об "
-              "этом не скажет.\n"
-              "\n"
-              "Что сделать: поставить Python с python.org (Windows — "
-              "отметить в установщике галочку «Add python.exe to PATH»), "
-              "затем запустить знакомство заново.\n"
-              "\n"
-              "Из Microsoft Store ставить не стоит: оттуда приходит "
-              "урезанная сборка, с которой проверки работают не всегда.")
-        try:
-            with open(out, "w", encoding="utf-8") as f:
-                json.dump({"found": False}, f, ensure_ascii=False, indent=2)
-        except OSError:
-            pass
-        return 1
+EXIT = {"ok": 0, "too_old": 1, "not_found": 1, "blocked": 3}
 
-    try:
-        with open(out, "w", encoding="utf-8") as f:
-            json.dump({"found": True, "python": path, "version": version},
-                      f, ensure_ascii=False, indent=2)
-    except OSError as exc:
-        print(f"Python найден ({path}), но записать это рядом с собой не "
-              f"получилось: {exc}\nПроверки будут запускаться по имени, а не "
-              f"по пути, — на Windows это ненадёжно.")
-        return 1
 
-    patched = patch_commands(path)
-    print(f"Python найден: {path} (версия {version}, через {via}).")
-    if patched:
-        print(f"Проверки качества переведены на этот путь ({patched} шт.) — "
-              f"запуск больше не зависит от того, какое имя понимает система.")
-    else:
-        print("Команды запуска остались на имени интерпретатора: подставить "
-              "путь не удалось. На этой машине проверки работают, но после "
-              "переноса на другую могут замолчать.")
-    return 0
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    as_json = "--json" in argv
+    apply = "--apply" in argv
+
+    result = detect()
+    saved = save_result(result)
+    if saved:
+        result["saved_to"] = saved
+
+    patched = 0
+    if apply and result["status"] == "ok":
+        patched = patch_commands(result["python"])
+        result["patched_commands"] = patched
+
+    if as_json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return EXIT[result["status"]]
+
+    print(HUMAN[result["status"]].format(**result))
+    if result["status"] == "ok":
+        if apply and patched:
+            print(f"Команды проверок переведены на этот путь ({patched} шт.).")
+        elif apply:
+            print("Подставить путь в команды не удалось: каталог пакета не "
+                  "записываем либо команды уже на пути. Проверки остаются на "
+                  "имени интерпретатора.")
+        print("Это проверка из диалога. Запускает ли проверки сама платформа "
+              "на событии — отдельный вопрос, его подтверждает только событие.")
+    return EXIT[result["status"]]
 
 
 if __name__ == "__main__":

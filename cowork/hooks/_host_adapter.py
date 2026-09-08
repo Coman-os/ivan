@@ -36,6 +36,7 @@ codex-rs/hooks/src/engine/command_runner.rs (env_clear).
 """
 
 import io
+import traceback
 import json
 import os
 import re
@@ -293,13 +294,19 @@ def run_main(main):
         real_out, real_err = sys.stdout, sys.stderr
         out_buf, err_buf = io.StringIO(), io.StringIO()
         sys.stdout, sys.stderr = out_buf, err_buf
+        crashed = None
         try:
             code = main()
         except SystemExit as exc:
             code = exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
+        except Exception:  # noqa: BLE001 — падение хука = событие первой линии
+            crashed = traceback.format_exc()
+            code = 0
         finally:
             sys.stdout, sys.stderr = real_out, real_err
         out_text, err_text = out_buf.getvalue(), err_buf.getvalue()
+        if crashed:
+            out_text, err_text = crash_output(event, crashed, main)
         relayed = relay_warning(out_text, err_text, code, event)
         real_out.write(relayed if relayed else out_text)
         real_out.flush()
@@ -314,6 +321,47 @@ def run_main(main):
 # Предел текста, который уходит модели одним предупреждением: длинный список
 # нарушений режется, полный остаётся человеку в stderr.
 ADDITIONAL_CONTEXT_LIMIT = 1500
+
+
+def crash_output(event, tb_text, main_fn=None):
+    """Падение хука — событие первой линии поддержки, а не тишина.
+
+    До 2026-09-08 исключение внутри main() уходило платформе трейсбеком:
+    Claude Code глотает ненулевой код как неблокирующую ошибку, человек
+    видит голый стек, помощник — ничего. Теперь: код выхода 0, в stderr —
+    стек (человеку), в stdout — хвост с отпечатком файла из паспорта сборки
+    и адресом общего места (помощнику, через additionalContext на
+    PostToolUse и SessionStart; у Stop своей схемы контекста нет — там
+    хвост остаётся в stderr).
+
+    Почему 0, а не 1: ненулевой код у обеих платформ — «неблокирующая
+    ошибка», то есть та же тишина для помощника; 0 с JSON — единственный
+    канал, по которому хвост доходит до модели (правило 22-bis).
+    Отпечаток даёт спутник `_support_lookup`; его нет — хвост без отпечатка,
+    но с именем файла, не молчание.
+    """
+    hook_file = None
+    try:
+        hook_file = os.path.abspath(sys.modules.get(getattr(main_fn, "__module__", "") or "").__file__)
+    except (AttributeError, TypeError):
+        hook_file = os.path.abspath(sys.argv[0]) if sys.argv and sys.argv[0] else None
+    try:
+        import _support_lookup as _sl
+        fp = _sl.fingerprint(hook_file) if hook_file else {"file": "?", "sha": "—", "harness": "—"}
+        tail = _sl.tail(fp)
+    except Exception:  # noqa: BLE001 — спутника нет или паспорт битый
+        tail = (f"Файл проверки {os.path.basename(hook_file or '?')} упал. "
+                "Скажите помощнику: «спроси у поставщика».")
+    human = ("Проверка обвязки упала, работа не остановлена.\n" + tail + "\n\n" + tb_text)
+    model = ("Проверка обвязки упала (работа не остановлена). " + tail
+             + " Скажи человеку одной фразой его словами; полный стек — у него в терминале.")
+    if event in ("PostToolUse", "SessionStart"):
+        out = json.dumps({"hookSpecificOutput": {
+            "hookEventName": event,
+            "additionalContext": model[:ADDITIONAL_CONTEXT_LIMIT],
+        }}, ensure_ascii=False) + "\n"
+        return out, human
+    return "", human
 
 
 def relay_warning(out_text, err_text, code, event):

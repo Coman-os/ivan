@@ -32,6 +32,15 @@ def load_messages(hook_input):
     if isinstance(inline, list) and inline:
         return inline
 
+    # Codex кладёт последний ответ прямо в payload события Stop
+    # (`last_assistant_message`, документация хуков). Хвост ответа — всё, что
+    # нужно проверкам конца ответа; брать его отсюда надёжнее, чем разбирать
+    # файл сессии, формат которого у Codex другой и документацией назван
+    # неустойчивым. Ветка добавлена 08.09.2026; на живом Codex не прогнана.
+    last = hook_input.get("last_assistant_message")
+    if isinstance(last, str) and last.strip():
+        return [{"role": "assistant", "content": last}]
+
     path = hook_input.get("transcript_path")
     if not path or not os.path.exists(path):
         return []
@@ -47,11 +56,25 @@ def load_messages(hook_input):
                     entry = json.loads(line)
                 except (json.JSONDecodeError, ValueError):
                     continue
-                # Формат .jsonl: {"type":"assistant","message":{"role":…,"content":…}}
+                # Claude Code: {"type":"assistant","message":{"role":…,"content":…}}
                 msg = entry.get("message")
                 if isinstance(msg, dict) and msg.get("role"):
                     messages.append(msg)
-                elif entry.get("role"):
+                    continue
+                # Codex (rollout): {"type":"response_item","payload":{"type":"message",
+                # "role":…,"content":[{"type":"output_text","text":…}]}}.
+                # Форма из исходников codex-rs; на живой записи не проверена.
+                payload = entry.get("payload")
+                if isinstance(payload, dict) and payload.get("role") \
+                        and payload.get("type", "message") == "message":
+                    content = payload.get("content")
+                    if isinstance(content, list):
+                        content = [{"type": "text", "text": c.get("text", "")}
+                                   for c in content if isinstance(c, dict)
+                                   and c.get("type") in ("output_text", "input_text", "text")]
+                    messages.append({"role": payload["role"], "content": content})
+                    continue
+                if entry.get("role"):
                     messages.append(entry)
     except OSError:
         return []
