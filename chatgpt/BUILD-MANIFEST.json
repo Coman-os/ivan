@@ -31,8 +31,8 @@
     "skills/deep-research/SKILL.md": "9add7251a394",
     "skills/dialectic-partner/SKILL.md": "dc5bf8175b0e",
     "skills/ivan-rules/SKILL.md": "32b6dc772b4a",
-    "skills/ivan-setup/SKILL.md": "91399e456491",
-    "skills/ivan-support/SKILL.md": "ceec9ec0e6a0",
+    "skills/ivan-setup/SKILL.md": "ef5c335d5a54",
+    "skills/ivan-support/SKILL.md": "b0a232e7fd42",
     "skills/kh-check/SKILL.md": "52c9571b5497"
   },
   "figure": {
@@ -42,7 +42,7 @@
     "rules_count": 18
   },
   "harness": {
-    "version": "2.5.5",
+    "version": "2.5.6",
     "hooks": [
       "check_closing_handoff.py",
       "check_deferred_actions.py",
@@ -93,5 +93,5 @@
     "журнал прецедентов правил",
     "операционные правила клиента (overlay)"
   ],
-  "built_at_version": "2.5.5"
+  "built_at_version": "2.5.6"
 }
