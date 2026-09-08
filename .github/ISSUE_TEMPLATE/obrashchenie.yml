@@ -1,0 +1,60 @@
+name: Обращение о дефекте поставки
+description: Файл из поставки ведёт себя не так. Поля собирает ваш помощник — скажите ему «спроси у поставщика».
+title: "[файл]: что не так"
+labels: ["обращение"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Обращение — о файле из паспорта сборки (`BUILD-MANIFEST.json`). Отпечаток и версию берёт помощник командой `python3 hooks/_support_lookup.py --fingerprint <файл>`.
+        Вопросы и наблюдения без отпечатка — в Discussions. Данные вашего контура (имена, карточки, выгрузки, токены) сюда не идут.
+  - type: input
+    id: harness_version
+    attributes:
+      label: Версия обвязки
+      description: Поле `harness.version` в паспорте сборки, например 2.4.0
+      placeholder: "2.4.0"
+    validations:
+      required: true
+  - type: input
+    id: file
+    attributes:
+      label: Файл
+      description: Имя файла как в паспорте, например hooks/post_write_md_check.py
+    validations:
+      required: true
+  - type: input
+    id: fingerprint
+    attributes:
+      label: Отпечаток файла
+      description: Хэш из вывода `--fingerprint`; пометка «изменён после установки», если есть
+    validations:
+      required: true
+  - type: dropdown
+    id: checked_by
+    attributes:
+      label: Чем проверено
+      options:
+        - прогон (команда выполнена, вывод приложен)
+        - живое событие (проверка сработала или не сработала на действии)
+        - чтение (только прочитан код или документ)
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидалось
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Получено
+      description: Строка ошибки или вывод. Без данных контура.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Платформа
+      placeholder: "Claude Code / Cowork · Codex / ChatGPT Work · ОС"
