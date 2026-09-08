@@ -239,6 +239,12 @@ def main():
         sys.path.insert(0, hooks_dir)
         import _support_lookup as _sl
         lines.append(_sl.summary_for_version(_sl.harness_version(), timeout=3))
+        # Вопросы без ответа — раз в день (первая сессия), и только при
+        # учётке gh: без неё форум не читается, а договор говорит «нет».
+        if _sl.first_session_today(root):
+            extra = _sl.summary_unanswered()
+            if extra:
+                lines.append(extra)
     except Exception as exc:  # noqa: BLE001
         lines.append("Общее место поддержки не опрошено: " + str(exc)[:120] + ".")
 

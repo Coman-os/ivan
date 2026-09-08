@@ -227,6 +227,115 @@ def sent_by_me(support=None):
         return {"ok": False, "reason": "gh вернул не JSON"}
 
 
+# ------------------------------------------------------- форум (через gh)
+def _gh_graphql(query, variables=None, timeout=15):
+    """GraphQL под учёткой человека. Discussions без токена не читаются —
+    единственный путь к ним у получателя — его же `gh`."""
+    cmd = ["gh", "api", "graphql", "-f", f"query={query}"]
+    for k, v in (variables or {}).items():
+        cmd += ["-F", f"{k}={v}"]
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return None, f"gh недоступен: {exc}"
+    if out.returncode != 0:
+        return None, (out.stderr or "gh вернул ошибку").strip()[:200]
+    try:
+        data = json.loads(out.stdout or "{}")
+    except ValueError:
+        return None, "gh вернул не JSON"
+    if "data" not in data:
+        return None, "ответ без поля data — тихий сбой"
+    return data["data"], None
+
+
+def gh_authorized(timeout=10):
+    try:
+        out = subprocess.run(["gh", "auth", "status"], capture_output=True, text=True, timeout=timeout)
+        return out.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def unanswered(support=None, limit=5):
+    """Вопросы без ответа в категории вопросов (Q&A) форума поставки."""
+    sup = support or support_of()
+    owner, name = sup["repo"].split("/", 1)
+    q = """query($owner:String!,$name:String!){ repository(owner:$owner,name:$name){
+      discussionCategories(first:20){ nodes { id slug isAnswerable } } } }"""
+    data, err = _gh_graphql(q, {"owner": owner, "name": name})
+    if err:
+        return {"ok": False, "reason": err}
+    cats = [c for c in data["repository"]["discussionCategories"]["nodes"] if c.get("isAnswerable")]
+    if not cats:
+        return {"ok": True, "count": 0, "items": [], "note": "категории вопросов нет"}
+    q2 = """query($owner:String!,$name:String!,$cat:ID!,$n:Int!){ repository(owner:$owner,name:$name){
+      discussions(first:$n, answered:false, categoryId:$cat, orderBy:{field:CREATED_AT,direction:DESC}){
+        totalCount nodes { id number title url createdAt author { login } } } } }"""
+    data, err = _gh_graphql(q2, {"owner": owner, "name": name, "cat": cats[0]["id"], "n": limit})
+    if err:
+        return {"ok": False, "reason": err}
+    d = data["repository"]["discussions"]
+    return {"ok": True, "count": d["totalCount"], "items": d["nodes"]}
+
+
+def answer(number, body, support=None):
+    """Комментарий в обсуждение под учёткой человека. Пишет только вызывающий
+    по строке договора — сам спутник решения не принимает."""
+    sup = support or support_of()
+    owner, name = sup["repo"].split("/", 1)
+    q = """query($owner:String!,$name:String!,$n:Int!){ repository(owner:$owner,name:$name){
+      discussion(number:$n){ id } } }"""
+    data, err = _gh_graphql(q, {"owner": owner, "name": name, "n": int(number)})
+    if err:
+        return {"ok": False, "reason": err}
+    did = ((data.get("repository") or {}).get("discussion") or {}).get("id")
+    if not did:
+        return {"ok": False, "reason": f"обсуждения №{number} нет"}
+    m = """mutation($id:ID!,$body:String!){ addDiscussionComment(input:{discussionId:$id, body:$body}){
+      comment { url } } }"""
+    data, err = _gh_graphql(m, {"id": did, "body": body})
+    if err:
+        return {"ok": False, "reason": err}
+    return {"ok": True, "url": data["addDiscussionComment"]["comment"]["url"]}
+
+
+def first_session_today(root=None):
+    """Первая сессия за день: отметка в каталоге временных файлов по ключу
+    плагина. Рядом с плагином не пишем — у Codex каталог бывает только для
+    чтения («Operation not permitted», 08.09.2026)."""
+    import datetime
+    import tempfile
+    key = hashlib.sha1((root or plugin_root() or __file__).encode("utf-8")).hexdigest()[:10]
+    stamp = os.path.join(tempfile.gettempdir(), f"ivan-support-{key}.day")
+    today = datetime.date.today().isoformat()
+    try:
+        with open(stamp, encoding="utf-8") as fh:
+            if fh.read().strip() == today:
+                return False
+    except OSError:
+        pass
+    try:
+        with open(stamp, "w", encoding="utf-8") as fh:
+            fh.write(today)
+    except OSError:
+        pass
+    return True
+
+
+def summary_unanswered(support=None):
+    if not gh_authorized():
+        return None  # без учётки форум не читается — самопроверка молчит об этом намеренно, договор говорит «нет»
+    res = unanswered(support)
+    if not res["ok"]:
+        return f"Форум поставки: {res['reason']} — вопросы без ответа не проверены."
+    if res["count"] == 0:
+        return "Форум поставки: вопросов без ответа нет."
+    titles = "; ".join(f"№{it['number']} {it['title']}" for it in res["items"][:3])
+    return (f"Форум поставки: вопросов без ответа — {res['count']}: {titles}. "
+            "Действуй по строке договора «Отвечать другим получателям» (навык ivan-support).")
+
+
 # ------------------------------------------------------------- человеческое
 def summary_for_version(version, support=None, timeout=TIMEOUT):
     """Одна-две строки для самопроверки при старте."""
@@ -276,6 +385,15 @@ def main(argv):
         return 0 if res["ok"] else 1
     if cmd == "--sent":
         print(json.dumps(sent_by_me(sup), ensure_ascii=False, indent=1))
+        return 0
+    if cmd == "--unanswered":
+        print(json.dumps(unanswered(sup), ensure_ascii=False, indent=1))
+        return 0
+    if cmd == "--answer" and len(rest) >= 2:
+        print(json.dumps(answer(rest[0], " ".join(rest[1:]), sup), ensure_ascii=False))
+        return 0
+    if cmd == "--gh-status":
+        print("есть, gh авторизован" if gh_authorized() else "нет")
         return 0
     if cmd == "--support":
         print(json.dumps(sup, ensure_ascii=False))
