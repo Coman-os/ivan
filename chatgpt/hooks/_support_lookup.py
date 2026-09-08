@@ -141,6 +141,34 @@ def tail(fp, support=None):
 
 
 # --------------------------------------------------------------------- сеть
+def _get_repo_json(path, support, timeout=TIMEOUT):
+    """Файл репозитория поставки через API содержимого, а не через `raw`.
+
+    Замер 08.09: сразу после публикации 2.5.2 `raw.githubusercontent.com`
+    минутами отдавал прежнюю 2.5.1, тогда как API содержимого — уже новую.
+    Кэш `raw` невидим и не отличается от настоящего отставания витрины:
+    проверка обновлений на нём говорит «у вас последняя» человеку, которому
+    надо обновиться. Поэтому источник версии — API; `raw` остаётся только
+    запасным путём, если API недоступен.
+    """
+    sup = support or support_of()
+    api = f"{sup['api']}/repos/{sup['repo']}/contents/{path}?ref=main"
+    try:
+        meta = _get_json(api, timeout)
+        raw_b64 = (meta or {}).get("content")
+        if raw_b64:
+            import base64
+            return json.loads(base64.b64decode(raw_b64).decode("utf-8"))
+        if meta.get("download_url"):
+            return _get_json(meta["download_url"], timeout)
+        raise ValueError("ответ без содержимого")
+    except (urllib.error.URLError, OSError, ValueError, KeyError):
+        #: Запасной путь — тот же файл через raw. Он бывает устаревшим,
+        #: поэтому идёт вторым и только когда API молчит.
+        base = sup["marketplace"].rsplit("/.claude-plugin/", 1)[0]
+        return _get_json(f"{base}/{path}", timeout)
+
+
 def _get_json(url, timeout=TIMEOUT):
     req = urllib.request.Request(url, headers={
         "Accept": "application/vnd.github+json",
@@ -220,7 +248,7 @@ def latest_version(support=None, timeout=TIMEOUT, plugin=None):
     #: Витрина: одна на обе сборки, отдаёт перечень с версиями.
     shop = {}
     try:
-        data = _get_json(sup["marketplace"], timeout)
+        data = _get_repo_json(".claude-plugin/marketplace.json", sup, timeout)
         for entry in data.get("plugins") or []:
             if entry.get("name") and entry.get("version"):
                 shop[entry["name"]] = entry["version"]
@@ -238,9 +266,8 @@ def latest_version(support=None, timeout=TIMEOUT, plugin=None):
         rel = PLUGIN_PATHS.get(name)
         if not rel:
             continue
-        url = sup["marketplace"].rsplit("/.claude-plugin/", 1)[0] + "/" + rel
         try:
-            passports[name] = (_get_json(url, timeout) or {}).get("version")
+            passports[name] = (_get_repo_json(rel, sup, timeout) or {}).get("version")
         except (urllib.error.URLError, OSError, ValueError) as exc:
             passports[name] = None
             out["sources"].setdefault("errors", []).append(f"{name}: {exc}")

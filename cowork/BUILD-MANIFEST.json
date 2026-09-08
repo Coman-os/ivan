@@ -8,7 +8,7 @@
   },
   "files": {
     "hooks/_host_adapter.py": "4da161246b68",
-    "hooks/_support_lookup.py": "bc6b9a8e5cd2",
+    "hooks/_support_lookup.py": "4876787ac914",
     "hooks/_transcript_io.py": "f28f0e1ac58d",
     "hooks/check_closing_handoff.py": "60b0fd04e5cb",
     "hooks/check_deferred_actions.py": "e68ce848a0fc",
@@ -42,7 +42,7 @@
     "rules_count": 18
   },
   "harness": {
-    "version": "2.5.2",
+    "version": "2.5.3",
     "hooks": [
       "check_closing_handoff.py",
       "check_deferred_actions.py",
@@ -92,5 +92,5 @@
     "журнал прецедентов правил",
     "операционные правила клиента (overlay)"
   ],
-  "built_at_version": "2.5.2"
+  "built_at_version": "2.5.3"
 }
