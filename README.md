@@ -45,6 +45,15 @@ codex plugin add coman-ivan-codex@coman
 Обычный ChatGPT без плагинов — другой продукт; сценарий с custom GPT описан в **[chatgpt/README.md](chatgpt/README.md)**, проверок качества там нет.
 
 
+## Инструкции
+
+| Платформа | Установка, проверка, обновление |
+|---|---|
+| Claude Code / Cowork | [cowork/START-HERE.md](cowork/START-HERE.md) |
+| Codex / ChatGPT Work | [chatgpt/START-HERE.md](chatgpt/START-HERE.md) |
+
+Обе страницы читаются прямо здесь, ссылку можно отправлять получателю. Те же инструкции в виде файла для печати — по запросу.
+
 ## Поддержка
 
 Что-то не так — скажите помощнику **«спроси у поставщика»**: он возьмёт отпечаток файла из паспорта сборки, посмотрит, известно ли это другим, задаст два вопроса и оформит запись. Дефекты — в [Issues](https://github.com/Coman-os/ivan/issues) по форме, вопросы и наблюдения — на [форуме](https://github.com/Coman-os/ivan/discussions). Правила места, что считается подтверждением и чего не писать — [здесь](https://github.com/Coman-os/ivan/discussions/2). Место открытое: данные вашего контура в него не идут.
