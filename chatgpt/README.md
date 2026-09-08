@@ -1,6 +1,6 @@
 # Иван — установка в ChatGPT Work
 
-**Версия:** 2.5.3 · журнал изменений — [CHANGELOG.md](https://github.com/Coman-os/ivan/blob/main/CHANGELOG.md)
+**Версия:** 2.5.4 · журнал изменений — [CHANGELOG.md](https://github.com/Coman-os/ivan/blob/main/CHANGELOG.md)
 
 ## С чего начать
 Пошаговая установка через приложение — **[START-HERE.md](START-HERE.md)**:
