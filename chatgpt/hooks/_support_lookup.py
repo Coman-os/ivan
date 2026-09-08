@@ -47,6 +47,14 @@ SUPPORT_DEFAULT = {
 TIMEOUT = 4
 MANIFEST = "BUILD-MANIFEST.json"
 
+# Паспорт каждой сборки в репозитории поставки — основной источник версии.
+# Витрина (`marketplace.json`) ведётся сборщиком отдельной записью и отстаёт
+# молча; паспорт лежит внутри самой сборки и разойтись с ней не может.
+PLUGIN_PATHS = {
+    "coman-ivan-cowork": "cowork/.claude-plugin/plugin.json",
+    "coman-ivan-codex": "chatgpt/.codex-plugin/plugin.json",
+}
+
 
 # --------------------------------------------------------------------- паспорт
 def plugin_root(start=None):
@@ -186,17 +194,76 @@ def search_file(rel_file, support=None, timeout=TIMEOUT):
     return _search(q, sup, timeout)
 
 
-def latest_version(support=None, timeout=TIMEOUT):
-    """Последняя опубликованная версия — из манифеста маркетплейса в репозитории."""
+def latest_version(support=None, timeout=TIMEOUT, plugin=None):
+    """Последняя опубликованная версия — из паспорта плагина в репозитории.
+
+    Два источника, не один. **Основной — `plugin.json` самой сборки**: это то,
+    что платформа ставит получателю, и версия там не может разойтись с
+    содержимым пакета. **Второй — `marketplace.json`**: витрина, которую
+    сборщик обновляет отдельной записью, и она отстаёт молча.
+
+    Почему порядок именно такой (замечание владельца 08.09, ADR первой линии):
+    сверка только по витрине врёт в опасную сторону. Витрина отстала на 2.4.0 —
+    человек на 2.5.1 слышит «вы впереди выпуска», человек на 2.4.0 слышит «у вас
+    последняя», и оба не обращаются. Ошибка тихая: обе стороны считают, что
+    проверка сработала.
+
+    Расхождение источников не скрывается: оно само есть дефект поставки и
+    называется в поле `mismatch` — по нему заводится обращение.
+
+    `plugin` — какая из двух сборок нас интересует; по умолчанию берётся
+    имя из паспорта установленного пакета, иначе проверяются обе.
+    """
     sup = support or support_of()
+    out = {"ok": False, "sources": {}}
+
+    #: Витрина: одна на обе сборки, отдаёт перечень с версиями.
+    shop = {}
     try:
         data = _get_json(sup["marketplace"], timeout)
+        for entry in data.get("plugins") or []:
+            if entry.get("name") and entry.get("version"):
+                shop[entry["name"]] = entry["version"]
     except (urllib.error.URLError, OSError, ValueError) as exc:
-        return {"ok": False, "reason": f"манифест выпуска недоступен: {exc}"}
-    versions = [p.get("version") for p in data.get("plugins") or [] if p.get("version")]
-    if not versions:
-        return {"ok": False, "reason": "в манифесте выпуска нет версий"}
-    return {"ok": True, "latest": max(versions, key=_vkey), "all": versions}
+        out["sources"]["marketplace"] = f"недоступен: {exc}"
+    else:
+        out["sources"]["marketplace"] = shop or "нет версий в перечне"
+
+    #: Паспорт сборки: свой файл у каждой платформы, путь задан витриной
+    #: (`source`), но при её недоступности берутся известные умолчания —
+    #: иначе отказ витрины уносил бы с собой и основной источник.
+    names = [plugin] if plugin else (list(shop) or list(PLUGIN_PATHS))
+    passports = {}
+    for name in names:
+        rel = PLUGIN_PATHS.get(name)
+        if not rel:
+            continue
+        url = sup["marketplace"].rsplit("/.claude-plugin/", 1)[0] + "/" + rel
+        try:
+            passports[name] = (_get_json(url, timeout) or {}).get("version")
+        except (urllib.error.URLError, OSError, ValueError) as exc:
+            passports[name] = None
+            out["sources"].setdefault("errors", []).append(f"{name}: {exc}")
+    passports = {k: v for k, v in passports.items() if v}
+    out["sources"]["plugin"] = passports or "паспорт сборки не прочитан"
+
+    if not passports and not shop:
+        out["reason"] = "ни паспорт сборки, ни витрина не прочитаны"
+        return out
+
+    #: Основной источник — паспорт; витрина только подтверждает.
+    primary = passports or shop
+    out["ok"] = True
+    out["latest"] = max(primary.values(), key=_vkey)
+    out["all"] = sorted(set(primary.values()), key=_vkey)
+    out["from"] = "паспорт сборки" if passports else "витрина (паспорт не прочитан)"
+
+    #: Расхождение витрины с паспортом — дефект поставки, не мелочь.
+    mismatch = {n: {"паспорт": passports[n], "витрина": shop.get(n)}
+                for n in passports if n in shop and shop[n] != passports[n]}
+    if mismatch:
+        out["mismatch"] = mismatch
+    return out
 
 
 def _vkey(v):
@@ -337,6 +404,27 @@ def summary_unanswered(support=None):
 
 
 # ------------------------------------------------------------- человеческое
+def summary_update(support=None, timeout=TIMEOUT, installed=None):
+    """Строка «есть ли обновление» для человека: версия, источник, расхождение."""
+    res = latest_version(support, timeout)
+    if not res.get("ok"):
+        return f"Проверка обновлений: {res.get('reason', 'источники недоступны')}."
+    mine = installed or harness_version()
+    line = f"Установлено {mine}, опубликовано {res['latest']} (источник — {res['from']})."
+    if res.get("mismatch"):
+        line += (" Витрина маркетплейса расходится с паспортом сборки: "
+                 + "; ".join(f"{n}: паспорт {v['паспорт']}, витрина {v['витрина']}"
+                             for n, v in res["mismatch"].items())
+                 + ". Это дефект поставки — скажите «спроси у поставщика».")
+    elif mine != "—" and _vkey(mine) < _vkey(res["latest"]):
+        line += " Есть обновление."
+    elif mine != "—" and _vkey(mine) > _vkey(res["latest"]):
+        line += " У вас версия новее опубликованной — так быть не должно, скажите «спроси у поставщика»."
+    else:
+        line += " У вас последняя."
+    return line
+
+
 def summary_for_version(version, support=None, timeout=TIMEOUT):
     """Одна-две строки для самопроверки при старте."""
     res = search_version(version, support, timeout)
@@ -378,11 +466,12 @@ def main(argv):
     if cmd == "--update":
         res = latest_version(sup)
         res["installed"] = harness_version(m)
-        if res["ok"]:
+        if res.get("ok"):
             res["behind"] = (None if res["installed"] == "—"
                              else _vkey(res["latest"]) > _vkey(res["installed"]))
-        print(json.dumps(res, ensure_ascii=False))
-        return 0 if res["ok"] else 1
+        print(summary_update(sup, installed=res["installed"]))
+        print(json.dumps(res, ensure_ascii=False, indent=1))
+        return 0 if res.get("ok") else 1
     if cmd == "--sent":
         print(json.dumps(sent_by_me(sup), ensure_ascii=False, indent=1))
         return 0

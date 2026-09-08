@@ -8,7 +8,7 @@
   },
   "files": {
     "hooks/_host_adapter.py": "4da161246b68",
-    "hooks/_support_lookup.py": "a8c41300613b",
+    "hooks/_support_lookup.py": "bc6b9a8e5cd2",
     "hooks/_transcript_io.py": "f28f0e1ac58d",
     "hooks/check_closing_handoff.py": "60b0fd04e5cb",
     "hooks/check_deferred_actions.py": "e68ce848a0fc",
@@ -32,7 +32,7 @@
     "skills/dialectic-partner/SKILL.md": "dc5bf8175b0e",
     "skills/ivan-rules/SKILL.md": "32b6dc772b4a",
     "skills/ivan-setup/SKILL.md": "91bd6a2f9033",
-    "skills/ivan-support/SKILL.md": "605caa777670",
+    "skills/ivan-support/SKILL.md": "6a92eb5733e5",
     "skills/kh-check/SKILL.md": "52c9571b5497"
   },
   "figure": {
@@ -42,7 +42,7 @@
     "rules_count": 18
   },
   "harness": {
-    "version": "2.5.1",
+    "version": "2.5.2",
     "hooks": [
       "check_closing_handoff.py",
       "check_deferred_actions.py",
@@ -93,5 +93,5 @@
     "журнал прецедентов правил",
     "операционные правила клиента (overlay)"
   ],
-  "built_at_version": "2.5.1"
+  "built_at_version": "2.5.2"
 }
