@@ -4,7 +4,7 @@
 |----------|----------|
 | Версия | 1.1 |
 | Слой | knowledge-hub |
-| principle_layer | 0 (размещение и структура файлов) — см. principles-architecture.md |
+| principle_layer | 0 (размещение и структура файлов) |
 | Статус | ✅ Active |
 | Owner | Максим Опилкин |
 | Назначение | Философский фундамент Knowledge Hub: SSOT, Channel-First, Knowledge Core vs Operations, автономность H2-секций. Объясняет ПОЧЕМУ система устроена так. Используется как основание для context-distribution-rules.md и cleanup-crew. |
@@ -19,7 +19,6 @@
 |----------|------|
 | **Этот документ** (design-principles) | ЗАЧЕМ — философский фундамент (SSOT, Channel-First, Core vs Ops) |
 | [context-distribution-rules.md](knowledge/context-distribution-rules.md) | КУДА — Decision Tree для размещения любого документа |
-| knowledge-core-structure.md | КАК — внутреннее устройство KC (genesis, индексы, KC Link Keeper) |
 
 **Тип:** документ домена knowledge-hub
 - Содержит правила интерпретации (SSOT, Channel-First)
@@ -175,11 +174,11 @@ Raw Input → Knowledge Hub (SSOT) → Transformation → Channels → Roles
 
 - Выделяй по **роли** (для кого), не по формату (таблица vs текст)
 - Сохраняй **один source of truth** — декомпозированные файлы ссылаются друг на друга, не дублируют
-- **Не декомпозируй преждевременно** — в момент синтеза разделение убивает мысль (см. knowledge-core-structure.md §3а)
+- **Не декомпозируй преждевременно** — в момент синтеза разделение убивает мысль
 
 ### 5.4 Связь с Knowledge Core
 
-В Knowledge Core аналогичный lifecycle описан для genesis-документов (§3а knowledge-core-structure.md: Draft → Approved → Indexed). Этот принцип обобщает паттерн: **любой** документ в Knowledge Hub проходит путь Composite → Decomposed, не только genesis.
+В Knowledge Core аналогичный lifecycle описан для genesis-документов. Этот принцип обобщает паттерн: **любой** документ в Knowledge Hub проходит путь Composite → Decomposed, не только genesis.
 
 
 ---
@@ -259,9 +258,7 @@ Raw Input → Knowledge Hub (SSOT) → Transformation → Channels → Roles
 ## Связанные документы
 
 - [context-distribution-rules.md](knowledge/context-distribution-rules.md) — Decision Tree: КУДА положить контент
-- knowledge-core-structure.md — Внутреннее устройство Knowledge Core (genesis, индексы, KC Link Keeper)
 - Layer 0 SSOT (внутреннее, не входит в дистрибутив) — двухплоскостная структура Knowledge Core (Management Ontology + Reasoning Engine) и параллельный блок Layer 1 — Company Knowledge Hub
-- google-drive-integration.md — Конкретная реализация для GDrive
 - (внутренний документ) — Оркестратор Cleanup Crew
 
 ---

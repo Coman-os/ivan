@@ -24,25 +24,25 @@
     "knowledge/document-lifecycle.md": "2f11c5a6fcbe",
     "knowledge/document-writing-standards.md": "540e8bcb8b00",
     "knowledge/git-commits.md": "77c59133c51d",
-    "knowledge/knowledge-hub-design-principles.md": "1d8332dd3ddc",
+    "knowledge/knowledge-hub-design-principles.md": "c62e4862dca4",
     "knowledge/language-preferences.md": "52e3f44b639d",
-    "knowledge/operating-principles.md": "6d35a746da50",
+    "knowledge/operating-principles.md": "803fe2a427c7",
     "skills/close-session/SKILL.md": "46ce32d0f497",
     "skills/deep-research/SKILL.md": "9add7251a394",
     "skills/dialectic-partner/SKILL.md": "dc5bf8175b0e",
-    "skills/ivan-rules/SKILL.md": "32b6dc772b4a",
-    "skills/ivan-setup/SKILL.md": "ef5c335d5a54",
+    "skills/ivan-rules/SKILL.md": "772638342d17",
+    "skills/ivan-setup/SKILL.md": "453926c46d72",
     "skills/ivan-support/SKILL.md": "fe36a8170384",
-    "skills/kh-check/SKILL.md": "52c9571b5497"
+    "skills/kh-check/SKILL.md": "de8d10025781"
   },
   "figure": {
     "stage": "v3",
     "rules_source": "clean-src/v3-ivan/root-CLAUDE.md",
-    "rules_sha": "e5e0eb1bdb5d",
+    "rules_sha": "3ace5c0e6e10",
     "rules_count": 18
   },
   "harness": {
-    "version": "2.6.0",
+    "version": "2.7.0",
     "hooks": [
       "check_closing_handoff.py",
       "check_deferred_actions.py",
@@ -93,5 +93,5 @@
     "журнал прецедентов правил",
     "операционные правила клиента (overlay)"
   ],
-  "built_at_version": "2.6.0"
+  "built_at_version": "2.7.0"
 }

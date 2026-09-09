@@ -56,7 +56,6 @@ Overlay **дополняет** этот корень (аддитивно), не 
 **Принципы:**
 - [operating-principles.md](knowledge/operating-principles.md) — универсальные принципы работы со знаниями (содержимое > обёртка, Signal Density, бритва Оккама, самоприменимость, incremental contract, high-velocity, factual integrity, имя = сущность, изменение → поддерживаемость, **принцип достаточности / субъектность** — граница делегирования)
 - [agent-design-principles.md](knowledge/agent-design-principles.md) — принципы AI-компонентов: §A продуктовые агенты + §B Claude Code skills
-- pipeline-health-tracking-pattern.md — паттерн межзапусковой памяти многошаговых процессов (immutable gates + mutable projection)
 
 **Reference / стандарты:**
 - [document-writing-standards.md](knowledge/document-writing-standards.md) — стандарт оформления документов (П1–П9, Я1–Я9)
