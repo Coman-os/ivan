@@ -17,7 +17,7 @@
 |---|---|---|
 | Правила поведения (фигура Ивана) | `skills/ivan-rules/SKILL.md` | 1 |
 | Навыки профиля | `skills/*/` | 6 |
-| Хуки качества (исполняемые) | `hooks/*.py` + `hooks/hooks.json` | 8 |
+| Хуки качества (исполняемые) | `hooks/*.py` + `hooks/hooks.json` | 9 |
 | Сканер секретов для git (ставится отдельно, см. `/ivan-setup`) | `hooks/secret-scan.py` | 1 |
 | Принципы и стандарты | `knowledge/*.md` | 8 |
 

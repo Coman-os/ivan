@@ -104,7 +104,14 @@ HANDOFF_PATTERNS = [
     # правку, из которой выведены. Ограничение длины (до 40 знаков)
     # и одиночная строка отделяют вопрос-передачу от вопроса внутри
     # рассуждения, который законен и ловиться не должен.
-    r"^[^.!?\n]{2,40}\?\s*$",
+    #
+    # \Z, не $ (added 2026-09-12, внешнее ревью): MULTILINE делает $ концом
+    # ЛЮБОЙ строки в окне TAIL_CHARS, не только последней. Markdown-заголовок
+    # вида «## Почему это важно?» с содержательным ответом сразу после —
+    # ложное срабатывание: это не передача хода, а риторическая структура
+    # текста. Признак был у́же сути (§24): суть — вопрос в закрывающей позиции
+    # ВСЕГО ответа, не в конце произвольной строки внутри хвоста.
+    r"^[^.!?\n]{2,40}\?\s*\Z",
     # СУЩЕСТВИТЕЛЬНОЕ/ПРИЛАГАТЕЛЬНОЕ СОСТОЯНИЯ (промахи 12.08 и 17.08).
     # Тот же ход, замаскированный сильнее прежних: не «сделаю X» и не «X?»,
     # а «X ждёт очереди» / «исполнима без вас» — грамматически отчёт о
@@ -146,6 +153,15 @@ HANDOFF_PATTERNS = [
     # строки, длина больше 40. Признак ýже сути (§24): суть — вопрос в
     # закрывающей позиции. \Z, не $: MULTILINE делает $ концом любой строки.
     r"\?\s*\Z",
+    # ХОД ЗАКРЫТ НАМЕРЕНИЕМ — утвердительная форма той же паузы (added 2026-09-12).
+    # §28 называет её прямо: «глагол будущего времени о вычислимой работе в
+    # последнем абзаце = пауза»; отчёт пишется о СДЕЛАННОМ. Перечень выше ловил
+    # только вопросительную форму, и «Поправлю Принцип 2», «Допишу в разбор»
+    # проходили насквозь: хук видит «?», а это утверждение.
+    # Замер 12.09 по живой сессии: 5 хвостов из 97 ответов, из них три — об
+    # одной и той же правке, обещанной дважды и не сделанной ни разу.
+    # Форма первого лица будущего времени, глагол правки, конец ответа.
+    r"^\s*(Поправлю|Допишу|Исправлю|Внесу|Перепишу|Заведу|Добавлю|Обновлю|Уберу|Сниму|Перенесу)\b[^?]*\Z",
 ]
 
 COMPILED = [re.compile(p, re.IGNORECASE | re.MULTILINE) for p in HANDOFF_PATTERNS]
@@ -271,11 +287,14 @@ def ask_judge(tail):
     judge_bin = os.environ.get("IVAN_HANDOFF_JUDGE", "claude")
     if shutil.which(judge_bin) is None:
         return None
+    env = dict(os.environ)
+    env["IVAN_HANDOFF_JUDGE_RUNNING"] = "1"
     try:
         proc = subprocess.run(
             [judge_bin, "-p", JUDGE_PROMPT.format(tail=tail[:2000]),
              "--output-format", "json"],
             cwd="/tmp", capture_output=True, text=True, timeout=JUDGE_TIMEOUT_S,
+            env=env,
         )
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
         return None
@@ -293,20 +312,36 @@ def ask_judge(tail):
 
 
 def main():
+    # Нормальное завершение молчит — ничего не печатает. {"decision": "allow"}
+    # снят: top-level `decision` не в документированной схеме Stop-хука
+    # (найдено внешним ревью + сверено документацией 2026-09-12); на allow-ветках
+    # это чистый noop без содержательного текста для доставки — печатать
+    # заведомо игнорируемое поле незачем. `decision: block` в respond() НЕ
+    # трогается: тот канал эмпирически подтверждён рабочим (замер 2026-09-05:
+    # allow+systemMessage — 0 доставлено за 14 дней; block+reason — доставляет),
+    # и не в документированной схеме тоже, но живой прогон весомее документации,
+    # которую мы не видели воспроизведённой (§22-bis).
+    if os.environ.get("IVAN_HANDOFF_JUDGE_RUNNING"):
+        # Этот процесс сам — судья (claude -p, спавнен ask_judge ниже).
+        # У него свой Stop-хук с тем же hooks.json; без этой отсечки его
+        # собственный JSON-вердикт («verdict»: …) читается как хвост без
+        # следов сделанного → ask_judge() зовёт судью на судью рекурсивно.
+        # seen_before() не ловит цикл: у каждого claude -p новый session_id.
+        # Прецедент — issue #18 (Coman-os/ivan): 450 и 306 самовызовов за
+        # сессию, ~40% дневного лимита за один хендофф-хвост.
+        return
+
     try:
         hook_input = json.loads(sys.stdin.read())
     except (json.JSONDecodeError, ValueError):
-        print(json.dumps({"decision": "allow"}))
         return
 
     transcript = load_messages(hook_input)
     if not transcript:
-        print(json.dumps({"decision": "allow"}))
         return
 
     last = transcript[-1]
     if last.get("role") != "assistant":
-        print(json.dumps({"decision": "allow"}))
         return
 
     text = extract_text(last)
@@ -317,10 +352,8 @@ def main():
         # молчим: fail-open, оператор видит текст сам.
         tail = text[-TAIL_CHARS:] if len(text) > TAIL_CHARS else text
         if not tail.strip() or not needs_judge(tail):
-            print(json.dumps({"decision": "allow"}))
             return
         if ask_judge(tail) is not True:
-            print(json.dumps({"decision": "allow"}))
             return
         hit = "передача хода (по существу, не по формулировке)"
 

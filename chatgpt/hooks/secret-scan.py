@@ -23,6 +23,8 @@ PATTERNS = {
     "bearer-header": re.compile(r"Bearer\s+[A-Za-z0-9._-]{30,}"),
     "github-pat": re.compile(r"gh[pousr]_[A-Za-z0-9]{36,}"),
     "aws-akid": re.compile(r"AKIA[0-9A-Z]{16}"),
+    "anthropic-key": re.compile(r"sk-ant-[A-Za-z0-9_-]{30,}"),
+    "pem-private-key": re.compile(r"-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----"),
 }
 
 # Маркеры строк, которые заведомо НЕ секрет (документация правила/сканера).
@@ -47,17 +49,39 @@ def mask(value):
     return f"{head}…[{len(value)} символов, скрыто]"
 
 
-def scan(path):
+def staged_content(path):
+    """Содержимое path так, как оно уйдёт в коммит (из index), а не с диска.
+
+    Разрыв index != working tree (add секрета, затем правка файла без
+    повторного add) иначе даёт ложное «чисто» на --staged: рабочая копия
+    чистая, но в index остаётся версия с секретом.
+    """
+    out = subprocess.run(
+        ["git", "show", f":{path}"], capture_output=True, text=True,
+    )
+    if out.returncode != 0:
+        return None
+    return out.stdout
+
+
+def scan(path, from_index=False):
     hits = []
     try:
-        with open(path, "r", encoding="utf-8", errors="ignore") as fh:
-            for lineno, line in enumerate(fh, 1):
-                if any(m in line for m in ALLOW_MARKERS):
-                    continue
-                for name, rx in PATTERNS.items():
-                    m = rx.search(line)
-                    if m:
-                        hits.append((path, lineno, name, mask(m.group(0))))
+        if from_index:
+            content = staged_content(path)
+            if content is None:
+                return hits
+            lines = content.splitlines(keepends=True)
+        else:
+            with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+                lines = fh.readlines()
+        for lineno, line in enumerate(lines, 1):
+            if any(m in line for m in ALLOW_MARKERS):
+                continue
+            for name, rx in PATTERNS.items():
+                m = rx.search(line)
+                if m:
+                    hits.append((path, lineno, name, mask(m.group(0))))
     except (OSError, UnicodeError):
         pass
     return hits
@@ -65,7 +89,8 @@ def scan(path):
 
 def main(argv):
     args = argv[1:]
-    if "--staged" in args:
+    from_index = "--staged" in args
+    if from_index:
         files = staged_files()
     elif "--all" in args:
         files = all_tracked()
@@ -77,7 +102,7 @@ def main(argv):
 
     all_hits = []
     for f in files:
-        all_hits.extend(scan(f))
+        all_hits.extend(scan(f, from_index=from_index))
 
     if all_hits:
         print("🔴 secret-scan: обнаружены потенциальные секреты — коммит заблокирован:\n")

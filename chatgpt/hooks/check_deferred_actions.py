@@ -61,16 +61,20 @@ COMPILED = [re.compile(p, re.IGNORECASE) for p in DEFERRED_PATTERNS]
 
 
 def main():
+    # Нормальное завершение молчит. {"decision": "allow"} снят на этих ветках —
+    # top-level `decision` не в документированной схеме Stop-хука,
+    # и на allow это noop без текста для доставки. Блокирующая ветка ниже
+    # (decision: block) НЕ трогается — та же формула, что в check_closing_handoff.py,
+    # эмпирически подтверждена рабочим каналом, документация не проверена
+    # живым прогоном против неё (§22-bis).
     hook_input = json.loads(sys.stdin.read())
     transcript = load_messages(hook_input)
 
     if not transcript:
-        print(json.dumps({"decision": "allow"}))
         return
 
     last_message = transcript[-1]
     if last_message.get("role") != "assistant":
-        print(json.dumps({"decision": "allow"}))
         return
 
     # Extract text from assistant message
@@ -114,8 +118,6 @@ def main():
                 )
             }))
             return
-
-    print(json.dumps({"decision": "allow"}))
 
 
 if __name__ == "__main__":

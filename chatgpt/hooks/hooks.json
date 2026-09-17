@@ -29,6 +29,17 @@
         "hooks": [
           {
             "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/hooks/post_bash_write_relay.py\"",
+            "commandWindows": "python \"${PLUGIN_ROOT}/hooks/post_bash_write_relay.py\"",
+            "timeout": 5,
+            "statusMessage": "post_bash_write_relay"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
             "command": "python3 \"$PLUGIN_ROOT/hooks/post_write_doc_standard_check.py\"",
             "commandWindows": "python \"${PLUGIN_ROOT}/hooks/post_write_doc_standard_check.py\"",
             "timeout": 5,
