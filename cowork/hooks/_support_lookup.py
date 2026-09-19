@@ -184,12 +184,22 @@ def _get_repo_json(path, support, timeout=TIMEOUT):
 
 
 def _get_json(url, timeout=TIMEOUT):
+    """GET → JSON. Токен идёт только на api.github.com.
+
+    Найдено обращением получателя (Иван, помощник Самсонова, 2026-09-19):
+    GITHUB_TOKEN добавлялся безусловно ко всем запросам, включая запасной
+    путь на raw.githubusercontent.com. Raw — публичный CDN, заголовок
+    Authorization с недействительным для него токеном он отвечает 404,
+    а не игнорирует. Итог: человек с ЛЮБЫМ токеном в окружении получал
+    «ни паспорт сборки, ни витрина не прочитаны» вместо ответа.
+    """
     req = urllib.request.Request(url, headers={
         "Accept": "application/vnd.github+json",
         "User-Agent": "ivan-support-lookup",
     })
     token = os.environ.get("GITHUB_TOKEN")
-    if token:
+    host = urllib.parse.urlparse(url).hostname or ""
+    if token and host == "api.github.com":
         req.add_header("Authorization", f"Bearer {token}")
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         raw = resp.read()

@@ -8,9 +8,9 @@
   },
   "files": {
     "hooks/_host_adapter.py": "4da161246b68",
-    "hooks/_support_lookup.py": "555461c96d1d",
+    "hooks/_support_lookup.py": "8f57042610d6",
     "hooks/_transcript_io.py": "f28f0e1ac58d",
-    "hooks/check_closing_handoff.py": "ccb958891488",
+    "hooks/check_closing_handoff.py": "5821c219cc12",
     "hooks/check_deferred_actions.py": "cfa7350bd15c",
     "hooks/post_bash_write_relay.py": "a7a836527a11",
     "hooks/post_write_doc_standard_check.py": "1d2b09576886",
@@ -31,7 +31,7 @@
     "skills/close-session/SKILL.md": "e41f2cb99707",
     "skills/deep-research/SKILL.md": "9add7251a394",
     "skills/dialectic-partner/SKILL.md": "d61deccba64b",
-    "skills/ivan-rules/SKILL.md": "175e6e0b9a48",
+    "skills/ivan-rules/SKILL.md": "2655f486aeb0",
     "skills/ivan-setup/SKILL.md": "453926c46d72",
     "skills/ivan-support/SKILL.md": "fe36a8170384",
     "skills/kh-check/SKILL.md": "de8d10025781"
@@ -39,11 +39,11 @@
   "figure": {
     "stage": "v3",
     "rules_source": "clean-src/v3-ivan/root-CLAUDE.md",
-    "rules_sha": "a215fc072256",
+    "rules_sha": "9e095518592e",
     "rules_count": 18
   },
   "harness": {
-    "version": "2.7.2",
+    "version": "2.7.3",
     "hooks": [
       "check_closing_handoff.py",
       "check_deferred_actions.py",
@@ -95,5 +95,5 @@
     "журнал прецедентов правил",
     "операционные правила клиента (overlay)"
   ],
-  "built_at_version": "2.7.2"
+  "built_at_version": "2.7.3"
 }
