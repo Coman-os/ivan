@@ -8,7 +8,7 @@
   },
   "files": {
     "hooks/_host_adapter.py": "4da161246b68",
-    "hooks/_support_lookup.py": "4876787ac914",
+    "hooks/_support_lookup.py": "555461c96d1d",
     "hooks/_transcript_io.py": "f28f0e1ac58d",
     "hooks/check_closing_handoff.py": "ccb958891488",
     "hooks/check_deferred_actions.py": "cfa7350bd15c",

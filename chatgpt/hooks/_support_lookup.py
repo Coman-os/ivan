@@ -101,6 +101,20 @@ def harness_version(manifest=None):
     return ((m or {}).get("harness") or {}).get("version") or "—"
 
 
+def harness_rules_sha(manifest=None):
+    """Отпечаток свода правил, установленного сейчас — из своего паспорта.
+
+    Номер версии называет обвязку целиком и патчи её часто не двигают
+    (см. CHANGELOG.md «Как читать»); `rules_sha` меняется с каждой правкой
+    текста правил и есть уже в паспорте каждой сборки. До этой правки
+    --update сравнивал только номер — молчал при живом расхождении
+    содержимого на неизменном номере (найдено обращением 2026-09-19:
+    установлено 2.7.0, опубликовано 2.7.0, но 10 файлов разошлись).
+    """
+    m = manifest if manifest is not None else load_manifest()
+    return ((m or {}).get("harness") or {}).get("rules_sha") or "—"
+
+
 def file_sha(path):
     try:
         with open(path, "rb") as fh:
@@ -262,6 +276,7 @@ def latest_version(support=None, timeout=TIMEOUT, plugin=None):
     #: иначе отказ витрины уносил бы с собой и основной источник.
     names = [plugin] if plugin else (list(shop) or list(PLUGIN_PATHS))
     passports = {}
+    rules_shas = {}
     for name in names:
         rel = PLUGIN_PATHS.get(name)
         if not rel:
@@ -271,8 +286,19 @@ def latest_version(support=None, timeout=TIMEOUT, plugin=None):
         except (urllib.error.URLError, OSError, ValueError) as exc:
             passports[name] = None
             out["sources"].setdefault("errors", []).append(f"{name}: {exc}")
+        #: rules_sha меняется с каждой правкой текста правил, номер версии
+        #: так часто не двигается (CHANGELOG.md «Как читать») — сравнение
+        #: только по номеру молчит при живом расхождении содержимого на
+        #: неизменном номере (найдено обращением 2026-09-19).
+        manifest_rel = rel.rsplit("/", 1)[0] + "/" + MANIFEST if "/" in rel else MANIFEST
+        try:
+            remote_manifest = _get_repo_json(manifest_rel, sup, timeout) or {}
+            rules_shas[name] = (remote_manifest.get("harness") or {}).get("rules_sha")
+        except (urllib.error.URLError, OSError, ValueError):
+            rules_shas[name] = None
     passports = {k: v for k, v in passports.items() if v}
     out["sources"]["plugin"] = passports or "паспорт сборки не прочитан"
+    out["rules_sha"] = {k: v for k, v in rules_shas.items() if v}
 
     if not passports and not shop:
         out["reason"] = "ни паспорт сборки, ни витрина не прочитаны"
@@ -431,7 +457,7 @@ def summary_unanswered(support=None):
 
 
 # ------------------------------------------------------------- человеческое
-def summary_update(support=None, timeout=TIMEOUT, installed=None):
+def summary_update(support=None, timeout=TIMEOUT, installed=None, installed_rules_sha=None):
     """Строка «есть ли обновление» для человека: версия, источник, расхождение."""
     res = latest_version(support, timeout)
     if not res.get("ok"):
@@ -449,6 +475,19 @@ def summary_update(support=None, timeout=TIMEOUT, installed=None):
         line += " У вас версия новее опубликованной — так быть не должно, скажите «спроси у поставщика»."
     else:
         line += " У вас последняя."
+        #: Номер совпал — этого мало (CHANGELOG.md «Как читать»: rules_sha
+        #: меняется с каждой правкой текста, номер так часто не двигается).
+        #: Сверяем отпечаток свода правил отдельно, чтобы патч на прежнем
+        #: номере не читался как «нечего обновлять».
+        mine_sha = installed_rules_sha if installed_rules_sha is not None else harness_rules_sha()
+        remote_shas = res.get("rules_sha") or {}
+        if mine_sha != "—" and remote_shas:
+            mismatched = {n: sha for n, sha in remote_shas.items() if sha and sha != mine_sha}
+            if mismatched:
+                line += (" Но отпечаток свода правил другой: "
+                         + "; ".join(f"{n} опубликован как {sha}" for n, sha in mismatched.items())
+                         + f" (у вас {mine_sha}). Версия не поднята при живой правке содержимого —"
+                         " это дефект поставки, скажите «спроси у поставщика».")
     return line
 
 
@@ -493,10 +532,12 @@ def main(argv):
     if cmd == "--update":
         res = latest_version(sup)
         res["installed"] = harness_version(m)
+        res["installed_rules_sha"] = harness_rules_sha(m)
         if res.get("ok"):
             res["behind"] = (None if res["installed"] == "—"
                              else _vkey(res["latest"]) > _vkey(res["installed"]))
-        print(summary_update(sup, installed=res["installed"]))
+        print(summary_update(sup, installed=res["installed"],
+                              installed_rules_sha=res["installed_rules_sha"]))
         print(json.dumps(res, ensure_ascii=False, indent=1))
         return 0 if res.get("ok") else 1
     if cmd == "--sent":
