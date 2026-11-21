@@ -22,6 +22,17 @@
             "statusMessage": "Проверка обещаний на будущее"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/hooks/check_request_coverage.py\"",
+            "commandWindows": "python \"${PLUGIN_ROOT}/hooks/check_request_coverage.py\"",
+            "timeout": 10,
+            "statusMessage": "Проверка полноты запроса"
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -35,6 +46,18 @@
             "statusMessage": "post_bash_write_relay"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/hooks/post_write_company_documents.py\"",
+            "commandWindows": "python \"${PLUGIN_ROOT}/hooks/post_write_company_documents.py\"",
+            "timeout": 5,
+            "statusMessage": "post_write_company_documents"
+          }
+        ],
+        "matcher": "^(apply_patch|Write|Edit)$"
       },
       {
         "hooks": [
@@ -86,6 +109,18 @@
       }
     ],
     "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/hooks/session_start_company_module.py\"",
+            "commandWindows": "python \"${PLUGIN_ROOT}/hooks/session_start_company_module.py\"",
+            "timeout": 5,
+            "statusMessage": "session_start_company_module",
+            "additionalContextLimit": 0
+          }
+        ]
+      },
       {
         "hooks": [
           {

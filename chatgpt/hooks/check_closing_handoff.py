@@ -341,6 +341,31 @@ def ask_judge(tail):
     return m.group(1) == "handoff"
 
 
+
+def _es_bound(*starts):
+    """Папка подключена к engineering-system OES — рядом лежит .es-connection.json.
+
+    Там действуют правила и порядок ES (план и явное «да» перед записью, свой
+    формат документов). Правила Ивана, его проверки конца ответа и шапки
+    документов в такой папке спорят с ES — поэтому молчат. Признак — файл,
+    который кладёт сам ES (tools/connection.py), а не имя папки. Прогон
+    2026-11-16: выключить плагин для отдельной папки Codex не даёт —
+    ни настройкой в .codex/config.toml, ни параметром -c.
+    """
+    for s in starts:
+        if not s:
+            continue
+        d = os.path.abspath(s)
+        while True:
+            if os.path.exists(os.path.join(d, ".es-connection.json")):
+                return True
+            parent = os.path.dirname(d)
+            if parent == d:
+                break
+            d = parent
+    return False
+
+
 def main():
     # Нормальное завершение молчит — ничего не печатает. {"decision": "allow"}
     # снят: top-level `decision` не в документированной схеме Stop-хука
@@ -364,6 +389,9 @@ def main():
     try:
         hook_input = json.loads(sys.stdin.read())
     except (json.JSONDecodeError, ValueError):
+        return
+
+    if _es_bound(os.environ.get("CLAUDE_PROJECT_DIR"), hook_input.get("cwd")):
         return
 
     transcript = load_messages(hook_input)

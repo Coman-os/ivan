@@ -243,12 +243,59 @@ def is_skill_source(content: str) -> bool:
     return bool(YAML_NAME_RE.search(block) and YAML_DESC_RE.search(block))
 
 
+
+def _es_bound(*starts):
+    """Папка подключена к engineering-system OES — рядом лежит .es-connection.json.
+
+    Там действуют правила и порядок ES (план и явное «да» перед записью, свой
+    формат документов). Правила Ивана, его проверки конца ответа и шапки
+    документов в такой папке спорят с ES — поэтому молчат. Признак — файл,
+    который кладёт сам ES (tools/connection.py), а не имя папки. Прогон
+    2026-11-16: выключить плагин для отдельной папки Codex не даёт —
+    ни настройкой в .codex/config.toml, ни параметром -c.
+    """
+    for s in starts:
+        if not s:
+            continue
+        d = os.path.abspath(s)
+        while True:
+            if os.path.exists(os.path.join(d, ".es-connection.json")):
+                return True
+            parent = os.path.dirname(d)
+            if parent == d:
+                break
+            d = parent
+    return False
+
+
+def _foreign_repo(file_path, project_dir):
+    """Файл лежит во вложенном репозитории со своим AGENTS.md (клон проекта
+    OES в рабочей папке Ивана) — формат документов задаёт этот репозиторий.
+    Корень проекта самого Ивана под признак не попадает."""
+    d = os.path.dirname(os.path.abspath(file_path))
+    proj = os.path.abspath(project_dir) if project_dir else ""
+    while True:
+        if os.path.exists(os.path.join(d, ".git")):
+            return d != proj and os.path.exists(os.path.join(d, "AGENTS.md"))
+        parent = os.path.dirname(d)
+        if parent == d:
+            return False
+        d = parent
+
+
 def main():
     hook_input = json.loads(sys.stdin.read())
 
     file_path = hook_input.get("tool_input", {}).get("file_path", "")
 
     if not file_path.endswith(".md"):
+        return
+
+    project_dir = (os.environ.get("CLAUDE_PROJECT_DIR")
+                   or hook_input.get("cwd") or os.getcwd())
+    if _es_bound(os.path.dirname(os.path.abspath(file_path)), project_dir):
+        return
+    if _foreign_repo(file_path, project_dir):
         return
 
     basename = os.path.basename(file_path)

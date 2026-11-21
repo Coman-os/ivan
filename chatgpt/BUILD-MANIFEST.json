@@ -8,30 +8,35 @@
   },
   "files": {
     "hooks/_host_adapter.py": "4da161246b68",
+    "hooks/_ivan_company.py": "54f8bc0abac1",
     "hooks/_support_lookup.py": "8f57042610d6",
-    "hooks/_transcript_io.py": "f28f0e1ac58d",
-    "hooks/check_closing_handoff.py": "5821c219cc12",
-    "hooks/check_deferred_actions.py": "cfa7350bd15c",
+    "hooks/_transcript_io.py": "5651bb616b4c",
+    "hooks/check_closing_handoff.py": "91da726852d1",
+    "hooks/check_deferred_actions.py": "c76ef39c9b88",
+    "hooks/check_request_coverage.py": "f46a16343d9c",
     "hooks/post_bash_write_relay.py": "a7a836527a11",
+    "hooks/post_write_company_documents.py": "ab9f3aa9af7b",
     "hooks/post_write_doc_standard_check.py": "1d2b09576886",
-    "hooks/post_write_md_check.py": "5fdb40e51c9c",
+    "hooks/post_write_md_check.py": "c9cd2f1c966e",
     "hooks/post_write_memory_gate.py": "214728f3a4af",
     "hooks/post_write_principles_read_check.py": "4b6ac2ae4a9a",
     "hooks/secret-scan.py": "add9e5c84a6d",
-    "hooks/session_start_load_rules.py": "1569aa6fe3a8",
+    "hooks/session_start_company_module.py": "c2b1903bfbad",
+    "hooks/session_start_load_rules.py": "714b43907494",
     "hooks/session_start_selfcheck.py": "c3d60fd2625d",
     "knowledge/agent-design-principles.md": "d1ebad02d5c6",
+    "knowledge/company-module.md": "4618fb3f04c9",
     "knowledge/context-distribution-rules.md": "995f6c4c916b",
     "knowledge/document-lifecycle.md": "2f11c5a6fcbe",
     "knowledge/document-writing-standards.md": "540e8bcb8b00",
     "knowledge/git-commits.md": "77c59133c51d",
     "knowledge/knowledge-hub-design-principles.md": "c62e4862dca4",
-    "knowledge/language-preferences.md": "52e3f44b639d",
+    "knowledge/language-preferences.md": "78e1b453e503",
     "knowledge/operating-principles.md": "33314f6c255f",
     "skills/close-session/SKILL.md": "e41f2cb99707",
     "skills/deep-research/SKILL.md": "9add7251a394",
     "skills/dialectic-partner/SKILL.md": "d61deccba64b",
-    "skills/ivan-rules/SKILL.md": "2655f486aeb0",
+    "skills/ivan-rules/SKILL.md": "ca6cc3685766",
     "skills/ivan-setup/SKILL.md": "453926c46d72",
     "skills/ivan-support/SKILL.md": "fe36a8170384",
     "skills/kh-check/SKILL.md": "de8d10025781"
@@ -39,24 +44,28 @@
   "figure": {
     "stage": "v3",
     "rules_source": "clean-src/v3-ivan/root-CLAUDE.md",
-    "rules_sha": "9e095518592e",
+    "rules_sha": "8cc4dfbcb4a9",
     "rules_count": 18
   },
   "harness": {
-    "version": "2.7.3",
+    "version": "2.10.0",
     "hooks": [
       "check_closing_handoff.py",
       "check_deferred_actions.py",
+      "check_request_coverage.py",
       "post_bash_write_relay.py",
+      "post_write_company_documents.py",
       "post_write_doc_standard_check.py",
       "post_write_md_check.py",
       "post_write_memory_gate.py",
       "post_write_principles_read_check.py",
+      "session_start_company_module.py",
       "session_start_load_rules.py",
       "session_start_selfcheck.py"
     ],
     "hook_modules": [
       "_host_adapter.py",
+      "_ivan_company.py",
       "_support_lookup.py",
       "_transcript_io.py"
     ],
@@ -74,6 +83,7 @@
     ],
     "knowledge": [
       "agent-design-principles.md",
+      "company-module.md",
       "context-distribution-rules.md",
       "document-lifecycle.md",
       "document-writing-standards.md",
@@ -95,5 +105,5 @@
     "журнал прецедентов правил",
     "операционные правила клиента (overlay)"
   ],
-  "built_at_version": "2.7.3"
+  "built_at_version": "2.10.0"
 }

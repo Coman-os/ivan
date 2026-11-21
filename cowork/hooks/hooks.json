@@ -2,6 +2,16 @@
   "hooks": {
     "PostToolUse": [
       {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/post_write_company_documents.py\"",
+            "timeout": 5
+          }
+        ]
+      },
+      {
         "matcher": "Write",
         "hooks": [
           {
@@ -66,6 +76,15 @@
         "hooks": [
           {
             "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/check_request_coverage.py\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/check_closing_handoff.py\"",
             "timeout": 15
           }
@@ -88,6 +107,15 @@
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/session_start_selfcheck.py\"",
             "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/session_start_company_module.py\"",
+            "timeout": 5
           }
         ]
       }

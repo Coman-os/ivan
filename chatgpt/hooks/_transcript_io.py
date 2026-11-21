@@ -21,7 +21,7 @@ import json
 import os
 
 
-def load_messages(hook_input):
+def load_messages(hook_input, prefer_history=False):
     """Сообщения сессии как список dict с ключами role/content.
 
     Принимает обе формы: `transcript` (список — синтетический вход тестов) и
@@ -38,7 +38,7 @@ def load_messages(hook_input):
     # файл сессии, формат которого у Codex другой и документацией назван
     # неустойчивым. Ветка добавлена 08.09.2026; на живом Codex не прогнана.
     last = hook_input.get("last_assistant_message")
-    if isinstance(last, str) and last.strip():
+    if not prefer_history and isinstance(last, str) and last.strip():
         return [{"role": "assistant", "content": last}]
 
     path = hook_input.get("transcript_path")
@@ -78,4 +78,28 @@ def load_messages(hook_input):
                     messages.append(entry)
     except OSError:
         return []
+    # Проверкам, которым нужен не только хвост, а предыдущие обязательства,
+    # сначала отдаём историю. Последний ответ из Stop-payload добавляем, если
+    # журнал ещё не успел его записать. Старые проверки вызывают функцию без
+    # prefer_history и сохраняют прежний надёжный путь по одному хвосту.
+    if prefer_history and isinstance(last, str) and last.strip():
+        if not messages or messages[-1].get("role") != "assistant" \
+                or _message_text(messages[-1]).strip() != last.strip():
+            messages.append({"role": "assistant", "content": last})
     return messages
+
+
+def _message_text(message):
+    """Текст сообщения для сравнения хвоста журнала со Stop-payload."""
+    content = message.get("content", "")
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, list):
+        return ""
+    parts = []
+    for block in content:
+        if isinstance(block, str):
+            parts.append(block)
+        elif isinstance(block, dict):
+            parts.append(block.get("text", ""))
+    return " ".join(parts)
