@@ -28,6 +28,7 @@
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.error
@@ -112,7 +113,7 @@ def harness_rules_sha(manifest=None):
     установлено 2.7.0, опубликовано 2.7.0, но 10 файлов разошлись).
     """
     m = manifest if manifest is not None else load_manifest()
-    return ((m or {}).get("harness") or {}).get("rules_sha") or "—"
+    return ((m or {}).get("figure") or {}).get("rules_sha") or "—"
 
 
 def file_sha(path):
@@ -284,7 +285,11 @@ def latest_version(support=None, timeout=TIMEOUT, plugin=None):
     #: Паспорт сборки: свой файл у каждой платформы, путь задан витриной
     #: (`source`), но при её недоступности берутся известные умолчания —
     #: иначе отказ витрины уносил бы с собой и основной источник.
-    names = [plugin] if plugin else (list(shop) or list(PLUGIN_PATHS))
+    target = (load_manifest().get("platform") or {}).get("target", "")
+    installed_plugin = ("coman-ivan-cowork" if target == "claude-code/cowork"
+                        else "coman-ivan-codex" if "codex" in target or "gpt" in target else None)
+    selected = plugin or installed_plugin
+    names = [selected] if selected in PLUGIN_PATHS else (list(shop) or list(PLUGIN_PATHS))
     passports = {}
     rules_shas = {}
     for name in names:
@@ -300,10 +305,10 @@ def latest_version(support=None, timeout=TIMEOUT, plugin=None):
         #: так часто не двигается (CHANGELOG.md «Как читать») — сравнение
         #: только по номеру молчит при живом расхождении содержимого на
         #: неизменном номере (найдено обращением 2026-09-19).
-        manifest_rel = rel.rsplit("/", 1)[0] + "/" + MANIFEST if "/" in rel else MANIFEST
+        manifest_rel = rel.split("/", 1)[0] + "/" + MANIFEST
         try:
             remote_manifest = _get_repo_json(manifest_rel, sup, timeout) or {}
-            rules_shas[name] = (remote_manifest.get("harness") or {}).get("rules_sha")
+            rules_shas[name] = (remote_manifest.get("figure") or {}).get("rules_sha")
         except (urllib.error.URLError, OSError, ValueError):
             rules_shas[name] = None
     passports = {k: v for k, v in passports.items() if v}
@@ -361,20 +366,19 @@ def sent_by_me(support=None):
 def _gh_graphql(query, variables=None, timeout=15):
     """GraphQL под учёткой человека. Discussions без токена не читаются —
     единственный путь к ним у получателя — его же `gh`."""
-    cmd = ["gh", "api", "graphql", "-f", f"query={query}"]
-    for k, v in (variables or {}).items():
-        cmd += ["-F", f"{k}={v}"]
+    cmd = ["gh", "api", "graphql", "--input", "-"]
+    payload = json.dumps({"query": query, "variables": variables or {}}, ensure_ascii=False)
     try:
-        out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return None, f"gh недоступен: {exc}"
+        out = subprocess.run(cmd, input=payload, capture_output=True, text=True, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired):
+        return None, "gh недоступен или не ответил"
     if out.returncode != 0:
-        return None, (out.stderr or "gh вернул ошибку").strip()[:200]
+        return None, "gh вернул ошибку; отправка не подтверждена, проверьте запись перед повтором"
     try:
         data = json.loads(out.stdout or "{}")
     except ValueError:
         return None, "gh вернул не JSON"
-    if "data" not in data:
+    if data.get("errors") or not isinstance(data.get("data"), dict):
         return None, "ответ без поля data — тихий сбой"
     return data["data"], None
 
@@ -409,9 +413,57 @@ def unanswered(support=None, limit=5):
     return {"ok": True, "count": d["totalCount"], "items": d["nodes"]}
 
 
-def answer(number, body, support=None):
+def publication_preview(body):
+    """Known sensitive formats only; never claim semantic confidentiality."""
+    patterns = {
+        "credential": r"(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|y0__[A-Za-z0-9_-]{20,}|AKIA[A-Z0-9]{16}|xox[baprs]-[A-Za-z0-9-]{10,})",
+        "authorization": r"(?i)(?:authorization\s*[:=]\s*|bearer\s+|OAuth\s+)[^\s,;]{8,}",
+        "private key": r"-----BEGIN (?:RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----",
+        "email": r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}",
+        "personal path": r"(?:/(?:Users|home)/[^\s/]+|[A-Za-z]:\\Users\\[^\s\\]+)",
+    }
+    findings = [{"kind": kind, "line": body.count("\n", 0, match.start()) + 1}
+                for kind, pattern in patterns.items() for match in re.finditer(pattern, body)]
+    if findings:
+        return {"ok": False, "reason": "Текст содержит возможные частные данные; исправьте и проверьте повторно.",
+                "findings": findings}
+    return {"ok": True, "preview": body, "sha256": hashlib.sha256(body.encode("utf-8")).hexdigest(),
+            "note": "Проверены известные форматы. Имена и смысл частных сведений проверяет человек по предпросмотру."}
+
+
+def publication_gate(body, approved_sha=None):
+    preview = publication_preview(body)
+    if not preview["ok"]:
+        return preview
+    if approved_sha != preview["sha256"]:
+        return {**preview, "ok": False,
+                "reason": "Отправка не выполнена: покажите предпросмотр и передайте отпечаток разрешённого текста."}
+    return None
+
+
+def create_issue(title, body, support=None, approved_sha=None):
+    """Publish the exact reviewed title and body through gh, without a shell."""
+    blocked = publication_gate(title + "\n\n" + body, approved_sha)
+    if blocked:
+        return blocked
+    sup = support or support_of()
+    try:
+        result = subprocess.run(["gh", "issue", "create", "-R", sup["repo"], "--title", title,
+                                 "--body-file", "-"], input=body, capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        return {"ok": False, "reason": "gh недоступен или не ответил; проверьте список отправленных перед повтором."}
+    url = result.stdout.strip()
+    if result.returncode or not url.startswith("https://github.com/" + sup["repo"] + "/issues/"):
+        return {"ok": False, "reason": "Создание обращения не подтверждено; проверьте список отправленных перед повтором."}
+    return {"ok": True, "url": url}
+
+
+def answer(number, body, support=None, approved_sha=None):
     """Комментарий в обсуждение под учёткой человека. Пишет только вызывающий
     по строке договора — сам спутник решения не принимает."""
+    blocked = publication_gate(body, approved_sha)
+    if blocked:
+        return blocked
     sup = support or support_of()
     owner, name = sup["repo"].split("/", 1)
     q = """query($owner:String!,$name:String!,$n:Int!){ repository(owner:$owner,name:$name){
@@ -484,20 +536,23 @@ def summary_update(support=None, timeout=TIMEOUT, installed=None, installed_rule
     elif mine != "—" and _vkey(mine) > _vkey(res["latest"]):
         line += " У вас версия новее опубликованной — так быть не должно, скажите «спроси у поставщика»."
     else:
-        line += " У вас последняя."
         #: Номер совпал — этого мало (CHANGELOG.md «Как читать»: rules_sha
         #: меняется с каждой правкой текста, номер так часто не двигается).
         #: Сверяем отпечаток свода правил отдельно, чтобы патч на прежнем
         #: номере не читался как «нечего обновлять».
         mine_sha = installed_rules_sha if installed_rules_sha is not None else harness_rules_sha()
         remote_shas = res.get("rules_sha") or {}
-        if mine_sha != "—" and remote_shas:
+        if mine_sha == "—" or not remote_shas or set(res.get("sources", {}).get("plugin", {})) - set(remote_shas):
+            line += " Номер версии совпадает; отпечаток правил не проверен — манифест недоступен или не содержит figure.rules_sha."
+        else:
             mismatched = {n: sha for n, sha in remote_shas.items() if sha and sha != mine_sha}
             if mismatched:
-                line += (" Но отпечаток свода правил другой: "
+                line += (" Номер версии совпадает, но отпечаток свода правил другой: "
                          + "; ".join(f"{n} опубликован как {sha}" for n, sha in mismatched.items())
                          + f" (у вас {mine_sha}). Версия не поднята при живой правке содержимого —"
                          " это дефект поставки, скажите «спроси у поставщика».")
+            else:
+                line += " У вас последняя; отпечаток правил совпадает."
     return line
 
 
@@ -556,9 +611,30 @@ def main(argv):
     if cmd == "--unanswered":
         print(json.dumps(unanswered(sup), ensure_ascii=False, indent=1))
         return 0
+    if cmd in ("--preview", "--answer-file", "--issue-file"):
+        import argparse
+        parser = argparse.ArgumentParser()
+        parser.add_argument("file")
+        parser.add_argument("--title")
+        parser.add_argument("--number", type=int)
+        parser.add_argument("--approved-sha")
+        args = parser.parse_args(rest)
+        with open(args.file, encoding="utf-8") as source:
+            body = source.read()
+        if cmd == "--preview":
+            res = publication_preview((args.title + "\n\n" if args.title else "") + body)
+        elif cmd == "--issue-file" and args.title:
+            res = create_issue(args.title, body, sup, args.approved_sha)
+        elif cmd == "--answer-file" and args.number:
+            res = answer(args.number, body, sup, args.approved_sha)
+        else:
+            parser.error("--title нужен для issue, --number нужен для ответа")
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return 0 if res["ok"] else 1
     if cmd == "--answer" and len(rest) >= 2:
-        print(json.dumps(answer(rest[0], " ".join(rest[1:]), sup), ensure_ascii=False))
-        return 0
+        res = answer(rest[0], " ".join(rest[1:]), sup)
+        print(json.dumps(res, ensure_ascii=False))
+        return 0 if res["ok"] else 1
     if cmd == "--gh-status":
         print("есть, gh авторизован" if gh_authorized() else "нет")
         return 0

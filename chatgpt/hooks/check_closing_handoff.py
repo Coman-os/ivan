@@ -10,7 +10,10 @@
 
 Хук НЕ решает, законен вопрос или нет: различить `in` (авторство нормы,
 приоритет, замысел — спросить верно) от Василия (вычислимое и обратимое —
-надо было делать) машинно нельзя. Поэтому реакция — предупреждение, не блок.
+надо было делать) в общем случае машинно нельзя. Поэтому реакция — один
+повторный разбор, а не запрет законного вопроса. Узкое исключение для уже
+объяснённых вопросов о публикации и утверждённой норме снимает этот повтор;
+полномочий на само действие оно не добавляет.
 
 Эмпирика (11 сессий из 12 с Василием формы 1, .claude/logs/autonomy-errors-log.md):
 §28 гналась за грамматикой вопроса и достраивала перечень форм после каждого
@@ -225,6 +228,48 @@ def is_promise(text):
     return False
 
 
+def explained_human_question(text):
+    """Narrow exception: explained publication or an owner-approved rule change.
+
+    Unrecognized wording keeps the original check. This does not grant permission
+    to publish; it only removes a redundant review of the question itself.
+    """
+    tail = text[-TAIL_CHARS:].strip()
+    if tail.count("?") != 1 or "```" in tail or "~~~" in tail:
+        return False
+    if not tail.endswith("?") or tail.splitlines()[-1].lstrip().startswith((">", "`", '"', "«")):
+        return False
+    match = re.search(r"([^.!?\n]+\?)\s*\Z", tail)
+    if not match:
+        return False
+    question = match.group(1).lower()
+    basis = tail[:match.start()].strip().lower()
+    if not basis or is_promise(basis):
+        return False
+    # Do not let a publication pretext hide a second routine task.
+    if re.search(r"\b(?:исправ\w*|почин\w*|собра\w*|собер\w*|прогна\w*|провер\w*|посчит\w*|созда\w*|заодно|затем)\b|\bи\s+", question):
+        return False
+    basis = re.split(r"[.!?]\s+", basis.rstrip(".!?"))[-1]
+    if re.search(r"\bне\s+(?:нуж\w*|треб\w*|от\b)|(?:согласие|разрешение)\s+не\b", basis):
+        return False
+    consent = re.search(r"(?:от\s+(?:твоего|вашего)\s+имени|(?:нуж\w*|треб\w*)\s+(?:тво\w*|ваш\w*)\s+(?:соглас\w*|разрешени\w*))", basis)
+    if not consent:
+        return False
+    publication = re.search(r"\b(?:опубликовать|опубликуем|публиковать|публикуем)\b", question)
+    if publication and re.search(r"\bпубликац\w*\b", basis):
+        return True
+    if (re.search(r"\b(?:отправить|отправляем|отправим)\b", question)
+            and re.search(r"\bотправк\w*\b", basis)
+            and re.search(r"\b(?:клиент\w*|наружу|публичн\w*|получател\w*)\b", basis)
+            and not re.search(r"\b(?:локальн\w*|каталог\w*|папк\w*)\b", question)):
+        return True
+    rule = r"\b(?:правил\w*|норм\w*|регламент\w*|договор\w*)\b"
+    return bool(re.search(r"\b(?:изменить|изменяем|меняем|переписать|обновить|утвердить|принять)\b", question)
+                and re.search(rule, question) and re.search(rule, basis)
+                and re.search(r"\b(?:изменени\w*|пересмотр\w*|правк\w*)\b", basis)
+                and re.search(r"(?:утвержд[её]н\w*|согласован\w*).{0,25}(?:тобой|вами)|(?:тобой|вами).{0,25}(?:утвержд[её]н\w*|согласован\w*)", basis))
+
+
 # ---------------------------------------------------------------------------
 # Второй слой: судья вместо перечня
 # ---------------------------------------------------------------------------
@@ -403,6 +448,8 @@ def main():
         return
 
     text = extract_text(last)
+    if explained_human_question(text):
+        return
     hit = check(text)
     if not hit:
         # Перечень промолчал — это ещё не «отчёт». Спрашиваем судью, если в

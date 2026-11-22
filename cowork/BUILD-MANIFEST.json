@@ -9,9 +9,9 @@
   "files": {
     "hooks/_host_adapter.py": "4da161246b68",
     "hooks/_ivan_company.py": "54f8bc0abac1",
-    "hooks/_support_lookup.py": "8f57042610d6",
+    "hooks/_support_lookup.py": "3cdc22ff87b8",
     "hooks/_transcript_io.py": "5651bb616b4c",
-    "hooks/check_closing_handoff.py": "91da726852d1",
+    "hooks/check_closing_handoff.py": "e70c71c01b76",
     "hooks/check_deferred_actions.py": "c76ef39c9b88",
     "hooks/check_request_coverage.py": "f46a16343d9c",
     "hooks/post_bash_write_relay.py": "a7a836527a11",
@@ -22,7 +22,7 @@
     "hooks/post_write_principles_read_check.py": "4b6ac2ae4a9a",
     "hooks/secret-scan.py": "add9e5c84a6d",
     "hooks/session_start_company_module.py": "c2b1903bfbad",
-    "hooks/session_start_load_rules.py": "714b43907494",
+    "hooks/session_start_load_rules.py": "7e6bfdc367d1",
     "hooks/session_start_selfcheck.py": "c5ee285eff4b",
     "knowledge/agent-design-principles.md": "d1ebad02d5c6",
     "knowledge/company-module.md": "4618fb3f04c9",
@@ -36,19 +36,19 @@
     "skills/close-session/SKILL.md": "e41f2cb99707",
     "skills/deep-research/SKILL.md": "9add7251a394",
     "skills/dialectic-partner/SKILL.md": "d61deccba64b",
-    "skills/ivan-rules/SKILL.md": "99bc544327e5",
-    "skills/ivan-setup/SKILL.md": "453926c46d72",
-    "skills/ivan-support/SKILL.md": "fe36a8170384",
+    "skills/ivan-rules/SKILL.md": "55bfafd71e7d",
+    "skills/ivan-setup/SKILL.md": "6bbe80a38d98",
+    "skills/ivan-support/SKILL.md": "ddffcd1c71aa",
     "skills/kh-check/SKILL.md": "de8d10025781"
   },
   "figure": {
     "stage": "v3",
     "rules_source": "clean-src/v3-ivan/root-CLAUDE.md",
-    "rules_sha": "8cc4dfbcb4a9",
+    "rules_sha": "662152228c37",
     "rules_count": 18
   },
   "harness": {
-    "version": "2.10.0",
+    "version": "3.0.0",
     "hooks": [
       "check_closing_handoff.py",
       "check_deferred_actions.py",
@@ -104,5 +104,5 @@
     "журнал прецедентов правил",
     "операционные правила клиента (overlay)"
   ],
-  "built_at_version": "2.10.0"
+  "built_at_version": "3.0.0"
 }

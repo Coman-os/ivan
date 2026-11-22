@@ -327,5 +327,56 @@ def main() -> None:
     }}, ensure_ascii=False))
 
 
+
+def emit_part(part, capacity):
+    """Deliver unchanged context in numbered, independently bounded outputs."""
+    import contextlib
+    import io
+    captured = io.StringIO()
+    with contextlib.redirect_stdout(captured):
+        try:
+            main()
+        except SystemExit as exc:
+            if exc.code:
+                raise
+    payload = json.loads(captured.getvalue())
+    context = payload["hookSpecificOutput"]["additionalContext"]
+    chunks, start, units = [], 0, 0
+    for index, char in enumerate(context):
+        width = 2 if ord(char) > 0xFFFF else 1
+        if units + width > 8900:
+            chunks.append(context[start:index])
+            start, units = index, 0
+        units += width
+    chunks.append(context[start:])
+    total = len(chunks)
+    if total > capacity:
+        if part:
+            return
+        root = (os.environ.get("CLAUDE_PLUGIN_ROOT") or os.environ.get("PLUGIN_ROOT")
+                or os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        project = os.path.abspath(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
+        chunk = ("Правила Ивана НЕ ЗАГРУЖЕНЫ полностью: стартовый контекст превышает "
+                 "ёмкость зарегистрированных частей. До выполнения задачи прочитай целиком "
+                 + os.path.join(root, "skills/ivan-rules/SKILL.md")
+                 + "; затем " + os.path.join(project, "WORKING-AGREEMENT.md")
+                 + " и " + os.path.join(project, "ORG-CONTEXT.md") + ", если они есть. "
+                 "Не утверждай, что правила загружены, пока не прочитаны все файлы.")
+    elif part >= total:
+        return
+    else:
+        chunk = ("[Иван: часть " + str(part + 1) + "/" + str(total)
+                 + ". Части одного свода; порядок задают номера.]\n"
+                 + chunks[part])
+    payload["hookSpecificOutput"]["additionalContext"] = chunk
+    print(json.dumps(payload, ensure_ascii=False))
+
+
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 5 and sys.argv[1] == "--part" and sys.argv[3] == "--parts":
+        part, capacity = int(sys.argv[2]), int(sys.argv[4])
+        if not 0 <= part < capacity:
+            raise SystemExit("invalid context part")
+        emit_part(part, capacity)
+    else:
+        main()
