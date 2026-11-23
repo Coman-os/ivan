@@ -73,6 +73,23 @@ EXECUTION_REVIEW = (
 )
 
 
+FIRST_TURN_GUIDANCE = (
+    "В рамках поручения выполни и проверь доступную работу в этом же ходе. "
+    "Перед итогом сверь фактический результат с запросом. Если остался "
+    "разрешённый шаг, выполни его без напоминания. При неудаче используй "
+    "доступный независимый источник. Если дальше нужны согласие, выбор "
+    "или сведения человека, сообщи, что уже установлено, и уточни только остаток. "
+    "Соблюдай заданные человеком границы, включая просьбу остановиться."
+)
+
+# A standalone acknowledgement or stop carries no new work.
+ACKNOWLEDGEMENT = re.compile(
+    r"(?:ок(?:ей)?|спасибо|благодарю|понятно|стоп|остановись|"
+    r"(?:всё|все),?\s+спасибо|ok(?:ay)?|thanks|stop)[.!\s]*",
+    re.IGNORECASE,
+)
+
+
 def message_text(message):
     content = message.get("content", "")
     if isinstance(content, str):
@@ -205,12 +222,14 @@ def main():
         return
     if _es_bound(os.environ.get("CLAUDE_PROJECT_DIR"), hook_input.get("cwd")):
         return
-    messages = load_messages(hook_input, prefer_history=True)
     if hook_input.get("hook_event_name") == "UserPromptSubmit":
         # The current prompt may not have been written to the rollout yet.
         prompt = hook_input.get("prompt")
         if not isinstance(prompt, str) or not prompt.strip():
             return
+        if ACKNOWLEDGEMENT.fullmatch(prompt.strip()):
+            return
+        messages = load_messages(hook_input, prefer_history=True)
         if not messages or messages[-1].get("role") != "user" or message_text(messages[-1]).strip() != prompt.strip():
             messages = [*messages, {"role": "user", "content": prompt}]
         reason = audit_reason(messages)
@@ -219,14 +238,17 @@ def main():
             context.append(note)
         if reason:
             context.append(response(reason, before_answer=True)["reason"])
-        elif needs_execution_review(prompt):
-            context.append(EXECUTION_REVIEW)
+        else:
+            context.append(FIRST_TURN_GUIDANCE)
+            if needs_execution_review(prompt):
+                context.append(EXECUTION_REVIEW)
         if context:
             print(json.dumps({"hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",
                 "additionalContext": "\n".join(context),
             }}, ensure_ascii=False))
         return
+    messages = load_messages(hook_input, prefer_history=True)
     reason = audit_reason(messages)
     user_messages = [message_text(message) for message in messages if message.get("role") == "user"]
     latest = user_messages[-1] if user_messages else ""
