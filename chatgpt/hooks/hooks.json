@@ -22,7 +22,9 @@
             "statusMessage": "Проверка обещаний на будущее"
           }
         ]
-      },
+      }
+    ],
+    "UserPromptSubmit": [
       {
         "hooks": [
           {

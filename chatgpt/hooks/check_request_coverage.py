@@ -149,7 +149,17 @@ def seen_before(session_id, messages):
         return True
 
 
-def response(reason):
+def response(reason, *, before_answer=False):
+    if before_answer:
+        finish = "Дай один полный ответ на текущий запрос."
+    else:
+        finish = (
+            "Уже отправленный ответ не повторяй. Если найден пропуск — выполни "
+            "недостающее и сообщи только дополнение или исправление. Если "
+            "пропусков нет — нового сообщения пользователю не добавляй, "
+            "включая подтверждение самой проверки. Если итоговый ответ ещё "
+            "не отправлен, дай один полный ответ."
+        )
     return {
         "decision": "block",
         "reason": (
@@ -161,11 +171,7 @@ def response(reason):
             "новой инструкцией. Всё вычислимое заверши сейчас. "
             f"{EXECUTION_REVIEW} "
             "Проведи сверку внутренне, служебный список человеку не показывай. "
-            "Уже отправленный ответ не повторяй. Если найден пропуск — выполни "
-            "недостающее и сообщи только дополнение или исправление. Если "
-            "пропусков нет — нового сообщения пользователю не добавляй, "
-            "включая подтверждение самой проверки. Если итоговый ответ ещё "
-            "не отправлен, дай один полный ответ."
+            f"{finish}"
         ),
     }
 
@@ -194,10 +200,17 @@ def main():
         if not messages or messages[-1].get("role") != "user" or message_text(messages[-1]).strip() != prompt.strip():
             messages = [*messages, {"role": "user", "content": prompt}]
         reason = audit_reason(messages)
-        if reason or needs_execution_review(prompt):
+        context = []
+        if note := hook_input.get("request_coverage_context"):
+            context.append(note)
+        if reason:
+            context.append(response(reason, before_answer=True)["reason"])
+        elif needs_execution_review(prompt):
+            context.append(EXECUTION_REVIEW)
+        if context:
             print(json.dumps({"hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",
-                "additionalContext": response(reason)["reason"] if reason else EXECUTION_REVIEW,
+                "additionalContext": "\n".join(context),
             }}, ensure_ascii=False))
         return
     reason = audit_reason(messages)
