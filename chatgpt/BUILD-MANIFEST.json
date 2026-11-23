@@ -48,7 +48,7 @@
     "rules_count": 18
   },
   "harness": {
-    "version": "3.0.5",
+    "version": "3.0.6",
     "hooks": [
       "check_closing_handoff.py",
       "check_deferred_actions.py",
@@ -105,5 +105,5 @@
     "журнал прецедентов правил",
     "операционные правила клиента (overlay)"
   ],
-  "built_at_version": "3.0.5"
+  "built_at_version": "3.0.6"
 }
