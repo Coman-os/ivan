@@ -202,9 +202,21 @@ def extract_text(message):
     return " ".join(parts)
 
 
+# Ignore a quoted example inside a continuing sentence. Keep standalone
+# quoted questions and everything the author says after the quotation.
+INLINE_EXAMPLE = re.compile(
+    r'(?:«[^«»\n]*»|“[^“”\n]*”|"[^"\n]*")(?=[ \t]+[а-яёa-z]|[ \t]*,[ \t]*[а-яёa-z])'
+)
+
+
+def handoff_tail(text):
+    masked = INLINE_EXAMPLE.sub(lambda match: "·" * len(match.group()), text)
+    return masked[-TAIL_CHARS:]
+
+
 def check(text):
     """Вернуть совпадение в хвосте ответа либо None. Выделено для тестируемости."""
-    tail = text[-TAIL_CHARS:] if len(text) > TAIL_CHARS else text
+    tail = handoff_tail(text)
     for pattern in COMPILED:
         match = pattern.search(tail)
         if match:
@@ -221,7 +233,7 @@ def is_promise(text):
     про расщепление уводит к разбору правила вместо работы (замер 19.09:
     четыре промаха подряд, каждый разобран в ответе и ни один не сделан).
     """
-    tail = text[-TAIL_CHARS:] if len(text) > TAIL_CHARS else text
+    tail = handoff_tail(text)
     for pattern in COMPILED[-PROMISE_PATTERN_TAIL:]:
         if pattern.search(tail):
             return True
