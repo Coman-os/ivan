@@ -11,7 +11,7 @@
     "hooks/_ivan_company.py": "54f8bc0abac1",
     "hooks/_support_lookup.py": "3cdc22ff87b8",
     "hooks/_transcript_io.py": "5651bb616b4c",
-    "hooks/check_closing_handoff.py": "e70c71c01b76",
+    "hooks/check_closing_handoff.py": "531c43fcc3ca",
     "hooks/check_deferred_actions.py": "c76ef39c9b88",
     "hooks/check_request_coverage.py": "812ac41f6d5c",
     "hooks/post_bash_write_relay.py": "a7a836527a11",
@@ -48,7 +48,7 @@
     "rules_count": 18
   },
   "harness": {
-    "version": "3.0.3",
+    "version": "3.0.4",
     "hooks": [
       "check_closing_handoff.py",
       "check_deferred_actions.py",
@@ -104,5 +104,5 @@
     "журнал прецедентов правил",
     "операционные правила клиента (overlay)"
   ],
-  "built_at_version": "3.0.3"
+  "built_at_version": "3.0.4"
 }
