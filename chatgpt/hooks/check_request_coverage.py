@@ -26,6 +26,14 @@ SHORT_CONTINUATIONS = re.compile(
     re.IGNORECASE,
 )
 
+# These prompts refer to an outstanding task even if its first turn has
+# fallen outside the available transcript.
+FOLLOW_UP = re.compile(
+    r"^\s*(?:и\s*\?|(?:ну\s+)?и\s+(?:что\s+)?дальше[?!.]*|"
+    r"(?:ок[,!]?\s*)?(?:сделай|делай)\s+вс[её]\s+(?:\d+|три|два|пункта))\s*$",
+    re.IGNORECASE,
+)
+
 OMISSION_COMPLAINTS = re.compile(
     r"(?:почему\s+не|а\s+где\b|где\s+же\b|на\s+второй\s+вопрос|"
     r"не\s+ответил|не\s+взял|не\s+отработал|закрыл.{0,60}по\s+процедуре|"
@@ -104,12 +112,14 @@ def audit_reason(messages):
     latest = user_texts[-1]
     if OMISSION_COMPLAINTS.search(latest):
         return "пользователь указал на пропущенный вопрос или результат"
+    if FOLLOW_UP.fullmatch(latest):
+        return "продолжение наследует исходное поручение"
     if is_compound(latest):
         return "в текущем сообщении несколько обязательств"
     if SHORT_CONTINUATIONS.match(latest):
         # A short approval inherits the work already specified. Looking only
         # at «давай» erases the source, design, and explanation obligations.
-        for previous in reversed(user_texts[-6:-1]):
+        for previous in reversed(user_texts[:-1]):
             if is_compound(previous) or ACTION_MARKERS.search(previous):
                 return "короткое продолжение наследует обязательства прошлых ходов"
     return None
@@ -169,6 +179,10 @@ def response(reason, *, before_answer=False):
             "закрой один исход: ответ дан; действие выполнено и проверено; "
             "требуется одно действительно чужое решение; либо пункт явно заменён "
             "новой инструкцией. Всё вычислимое заверши сейчас. "
+            "Сверь результат с исходным поручением по факту его использования. "
+            "Если попытка не удалась, проверь оставшиеся разрешённые источники. "
+            "Отдели доступные факты от недоступных. Закрой независимую часть "
+            "и задай один вопрос, только если дальше нужны выбор или доступ человека. "
             f"{EXECUTION_REVIEW} "
             "Проведи сверку внутренне, служебный список человеку не показывай. "
             f"{finish}"
